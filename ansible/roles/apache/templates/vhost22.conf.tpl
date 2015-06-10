@@ -1,0 +1,20 @@
+UseCanonicalName Off
+
+# this log format can be split per-virtual-host based on the first field
+LogFormat "%V %h %l %u %t \"%r\" %s %b" vcommon
+CustomLog /var/log/apache2/access.log vcommon
+
+<Directory "{{ doc_root }}">
+    AllowOverride All
+    Order allow,deny
+    Allow from all
+</Directory>
+
+<VirtualHost *:80>
+    VirtualDocumentRoot {{ doc_root }}%0/web
+</VirtualHost>
+
+<VirtualHost *:80>
+    ServerName 192.168.33.99
+    DocumentRoot {{ doc_root }}default
+</VirtualHost>

@@ -1,0 +1,18 @@
+---
+- hosts: all
+  sudo: true
+  vars:
+    timezone: Europe/Warsaw
+  vars_files:
+    - vars/mysql.yml
+    - vars/common.yml
+    - [ "vars/apachephp.yml", "vars/ws_defaults.yml" ]
+  roles:
+    - init
+    - php5-cli
+    - apache
+    - php5
+    - mysql
+    - composer
+    - phpcommon
+    - app
