@@ -17,7 +17,7 @@ while (false !== ($filename = readdir($dh))) {
         $localDomain = $filename;
         $externalDomain = preg_replace("'" . $suffix . "'", '', $filename);
 
-        $baseurl = '/' . file_exists($dir . $filename . '/web/app_dev.php') ? 'app_dev.php' : '';
+        $baseurl = '/' . (file_exists($dir . $filename . '/web/app_dev.php') ? 'app_dev.php' : '');
         $localUrl = 'http://' . $localDomain . $baseurl;
         $externalUrl = 'http://' . $externalDomain;
 
