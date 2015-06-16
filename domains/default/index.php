@@ -1,33 +1,6 @@
 <?php
 error_reporting(E_ALL);
 
-/**
- * config
- */
-$orders = [
-    (object)[
-        'key' => 'name',
-        'direction' => 'asc',
-        'icon' => 'tasks',
-    ],
-    (object)[
-        'key' => 'name',
-        'direction' => 'desc',
-        'icon' => 'tasks',
-    ],
-    (object)[
-        'key' => 'date',
-        'direction' => 'asc',
-        'icon' => 'calendar',
-    ],
-    (object)[
-        'key' => 'date',
-        'direction' => 'desc',
-        'icon' => 'calendar',
-    ],
-
-];
-
 $suffix = "\.local";
 $dir = "/vagrant/domains/";
 
@@ -40,64 +13,35 @@ while (false !== ($filename = readdir($dh))) {
 
     if (preg_match("'" . $suffix . "$'", $filename)) {
 
-        # file url
-        if (file_exists($dir . $filename . '/web/app_dev.php')) {
-            $baseurl = '/app_dev.php';
-        } else {
-            $baseurl = '/';
-        }
+# domain, url, code, date
+        $localDomain = $filename;
+        $externalDomain = preg_replace("'" . $suffix . "'", '', $filename);
 
-        # mod time
+        $baseurl = '/' . file_exists($dir . $filename . '/web/app_dev.php') ? 'app_dev.php' : '';
+        $localUrl = 'http://' . $localDomain . $baseurl;
+        $externalUrl = 'http://' . $externalDomain;
+
+        $realPath = readlink($dir . $filename);
+
+        $code = basename(dirname($realPath));
+
         $mtime = filemtime($dir . $filename);
-        switch ($_GET['k']) {
-            default:
-            case 'name':
-                $key = $filename;
-                break;
-            case 'date':
-                $key = $mtime . $filename;
-                break;
-        }
 
-        # name, domain, url
-        $name = $filename;
-        $url = 'http://' . $filename . $baseurl;
-        $domain = preg_replace("'" . $suffix . "'", '', $url);
+        $tags = file_exists(dirname($realPath) . '/tags.txt') ? explode("\n", trim(file_get_contents(dirname($realPath) . '/tags.txt'))) : [];
 
-        # tags
-        $tags = explode('.', $filename);
-        unset($tags[count($tags) - 1]);
-        foreach ($tags as $tag) {
-            $domainTags[$tag][] = $key;
-        }
+        $domains[] = (object)[
+            'code' => $code,
+            'url' => $localUrl,
+            'externalUrl' => $externalUrl,
+            'name' => $externalDomain,
+            'date' => date('Y-m-d H:i:s', $mtime),
+            'tags' => $tags,
+        ];
+
         $hosts[] = $filename;
-
-        if ((!empty($_GET['t']) && in_array($_GET['t'], $tags)) || empty($_GET['t'])) {
-            $domains[$key] = (object)[
-                'code' => basename(dirname(readlink($dir . $filename))),
-                'url' => $url,
-                'domain' => $domain,
-                'name' => $name,
-                'tags' => $tags,
-                'date' => date('Y-m-d H:i:s', $mtime),
-            ];
-        }
     }
 }
 
-/**
- * sort data
- */
-ksort($domainTags);
-switch ($_GET['d']) {
-    default:
-    case 'asc':
-        ksort($domains);
-        break;
-    case 'desc':
-        krsort($domains);
-        break;
-}
 ?>
 <!DOCTYPE html>
 <html>
@@ -106,88 +50,29 @@ switch ($_GET['d']) {
         <meta charset="UTF-8">
         <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
         <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap-theme.min.css">
+        <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.8.1/bootstrap-table.min.css">
     </head>
     <body>
         <nav class="navbar navbar-default">
             <div class="container">
                 <div class="navbar-header">
-                    <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
-                        <span class="sr-only">Toggle navigation</span>
-                        <span class="icon-bar"></span>
-                        <span class="icon-bar"></span>
-                        <span class="icon-bar"></span>
-                    </button>
                     <a class="navbar-brand" href="/">
                         <span class="glyphicon glyphicon-fire"></span>
                         VServer
                     </a>
+                    <? if (!empty($domains)): ?>
+                        <a class="navbar-toggle" data-toggle="modal" href="#hostsConfig">
+                            <span class="glyphicon glyphicon-cog"></span>
+                        </a>
+                    <? endif; ?>
                 </div>
                 <? if (!empty($domains)): ?>
                     <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
-                        <ul class="nav navbar-nav">
-                            <? foreach ($orders as $order): ?>
-                                <li<? if ($_GET['k'] == $order->key AND $_GET['d'] == $order->direction): ?> class="active"<? endif; ?>>
-                                    <a href="?k=<?= $order->key ?>&d=<?= $order->direction ?>&t=<?= $_GET['t'] ?>">
-                                        <span class="glyphicon glyphicon-<?= $order->icon ?>"></span>
-                                        <span class="glyphicon glyphicon-chevron-<?= ($order->direction == "asc") ? "up" : "down" ?>"></span>
-                                        <span class="hidden-sm hidden-md hidden-lg">Order by <?= $order->key ?> <?= $order->direction ?></span>
-                                    </a>
-                                </li>
-                            <? endforeach; ?>
-                        </ul>
-                        <form class="navbar-form navbar-left" role="search">
-                            <div class="form-group">
-                                <div class="form-group has-feedback">
-                                    <span class="glyphicon glyphicon-filter form-control-feedback" aria-hidden="true"></span>
-                                    <input class="form-control" id="searchinput" type="search" placeholder="Filter by domain..."/>
-                                </div>
-                            </div>
-                        </form>
                         <ul class="nav navbar-nav navbar-right">
                             <li>
                                 <a data-toggle="modal" href="#hostsConfig">
                                     <span class="glyphicon glyphicon-cog"></span>
-                                    <span class="hidden-sm hidden-md hidden-lg">Show hosts config</span>
                                 </a>
-
-                                <div class="modal fade" id="hostsConfig">
-                                    <div class="modal-dialog modal-lg">
-                                        <div class="modal-content">
-                                            <div class="modal-header">
-                                                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                                                <h4 class="modal-title">Hosts config</h4>
-                                            </div>
-                                            <div class="modal-body">
-                                                Copy following code and paste into <code>/etc/hosts</code> file.
-                                                <textarea style="width: 100%;height: 400px; resize: none"><?= $_SERVER['SERVER_ADDR'] . "\t" . implode("\t", $hosts) ?></textarea>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </li>
-                            <li class="dropdown<? if (!empty($_GET['t'])): ?> active<? endif; ?>">
-                                <a class="dropdown-toggle" data-toggle="dropdown">
-                                    <span class="glyphicon glyphicon-tag"></span>
-                                    <span class="hidden-sm hidden-md hidden-lg">Show tags</span>
-                                    <span class="caret"></span>
-                                </a>
-                                <ul class="dropdown-menu dropdown-menu-right" role="menu">
-                                    <? if (!empty($_GET['t'])): ?>
-                                        <li>
-                                            <a href="?k=<?= $_GET['k'] ?>&d=<?= $_GET['d'] ?>&t=">
-                                                reset
-                                            </a>
-                                        </li>
-                                        <li class="divider"></li>
-                                    <? endif; ?>
-                                    <? foreach ($domainTags as $tag => $keys): ?>
-                                        <li<? if ($_GET['t'] == $tag): ?> class="active"<? endif; ?>>
-                                            <a href="?k=<?= $_GET['k'] ?>&d=<?= $_GET['d'] ?>&t=<?= $tag ?>">
-                                                <?= $tag ?>
-                                            </a>
-                                        </li>
-                                    <? endforeach; ?>
-                                </ul>
                             </li>
                         </ul>
                     </div>
@@ -204,18 +89,65 @@ switch ($_GET['d']) {
                             No directories configured. Create one with suffix <code><?= stripslashes($suffix) ?></code> in <code><?= $dir ?></code> on virtual machine and add it to hosts file in local machine.
                         </div>
                     <? else: ?>
-                        <div class="panel panel-default">
-                            <div class="list-group" id="searchlist">
-                                <? foreach ($domains as $domain): ?>
-                                    <a href="<?= $domain->url ?>" class="list-group-item">
-                                        <? foreach ($domain->tags as $tag): ?>
-                                            <span class="text"><?= $tag ?></span>
-                                        <? endforeach ?>
-                                        <span class="hidden name"><?= $domain->name ?></span>
-                                        <span class="label label-success"><?= $domain->code ?></span>
-                                        <span class="badge"><?= $domain->date ?></span>
-                                    </a>
+                        <table id="searchlist"
+                               data-classes="table table-hover table-condensed table-striped"
+                               data-toggle="table"
+                               data-search="true"
+                               data-pagination="true"
+                               data-sort-name="date"
+                               data-sort-order="desc">
+                            <thead>
+                                <tr>
+                                    <th data-field="name" data-sortable="true">
+                                        <em class="glyphicon glyphicon-file"></em> Name
+                                    </th>
+                                    <th data-field="code" data-sortable="true">
+                                        <em class="glyphicon glyphicon-tasks"></em> Code
+                                    </th>
+                                    <th>
+                                        <em class="glyphicon glyphicon-tag"></em> Tags
+                                    </th>
+                                    <th data-field="date" data-sortable="true">
+                                        <em class="glyphicon glyphicon-calendar"></em> Date
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <? foreach ($domains as $i => $domain): ?>
+                                    <tr id="tr-id-<?= $i ?>" class="tr-class-<?= $i ?>">
+                                        <td>
+                                            <a href="<?= $domain->url ?>">
+                                                <?= $domain->name ?>
+                                            </a>
+                                            <a href="<?= $domain->externalUrl ?>">
+                                                <em class="glyphicon glyphicon-new-window"></em>
+                                            </a>
+                                        </td>
+                                        <td>
+                                            <?= $domain->code ?>
+                                        </td>
+                                        <td>
+                                            <?= implode(', ', $domain->tags) ?>
+                                        </td>
+                                        <td>
+                                            <?= $domain->date ?>
+                                        </td>
+                                    </tr>
                                 <? endforeach ?>
+                            </tbody>
+                        </table>
+                        <div class="modal fade" id="hostsConfig">
+                            <div class="modal-dialog modal-lg">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                                        <h4 class="modal-title">Hosts config</h4>
+                                    </div>
+                                    <div class="modal-body">
+                                        Copy following code and paste into <code>/etc/hosts</code> file.
+                                        <textarea style="width: 100%;height: 400px; resize: none"><?= $_SERVER['SERVER_ADDR'] . "\t" . implode("\t", $hosts) ?></textarea>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     <? endif; ?>
@@ -224,9 +156,6 @@ switch ($_GET['d']) {
         </section>
         <script src="//code.jquery.com/jquery-2.1.4.min.js"></script>
         <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
-        <script src="//labs.easyblog.it/bootstrap-list-filter/bootstrap-list-filter.src.js"></script>
-        <script>
-            $('#searchlist').btsListFilter('#searchinput', {itemChild: '.name', initial: false});
-        </script>
+        <script src="//cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.8.1/bootstrap-table.js"></script>
     </body>
 </html>
