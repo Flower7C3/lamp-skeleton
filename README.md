@@ -10,4 +10,5 @@
  - it could be an symlink to another directory, eg. **/vagrant/domains/example.com.local** is symlink to **/vagrant/projects/com/example/** directory.
 6. Configure *dnsmasq* or add domain to local hosts file, eg.
         192.168.33.99 example.com.local
-7. Open [web browser](http://192.168.33.99).
+7. Create **config.php** file in **/vagrant/domains/default/** directory.
+8. Open [web browser](http://192.168.33.99).
