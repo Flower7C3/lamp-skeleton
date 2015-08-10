@@ -450,7 +450,7 @@ natcasesort($TAGS);
             </div>
         </section>
         <script src="//code.jquery.com/jquery-<?= $jqueryVersion ?>.min.js"></script>
-        <script src="//maxcdn.bootstrapcdn.com/bootstrap/<?= $fontawesomeVersion ?>/js/bootstrap.min.js"></script>
+        <script src="//maxcdn.bootstrapcdn.com/bootstrap/<?= $bootstrapVersion ?>/js/bootstrap.min.js"></script>
         <script src="//cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.8.1/bootstrap-table.min.js"></script>
         <script src="//cdnjs.cloudflare.com/ajax/libs/bootstrap-growl/1.0.0/jquery.bootstrap-growl.min.js"></script>
         <script type="text/javascript">
