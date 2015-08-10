@@ -10,6 +10,10 @@ CustomLog /var/log/apache2/access.log vcommon
     Require all granted
 </Directory>
 
+<VirtualHost *:81>
+    VirtualDocumentRoot {{ doc_root }}%0
+</VirtualHost>
+
 <VirtualHost *:80>
     VirtualDocumentRoot {{ doc_root }}%0/web
 </VirtualHost>

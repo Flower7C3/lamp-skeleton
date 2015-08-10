@@ -1,17 +1,36 @@
 <?php
-error_reporting(E_ALL);
 
-$suffix = "\.dev";
-$dir = "/vagrant/domains/";
+require 'config.dist.php';
+require 'config.php';
+
+/**
+ * versions
+ */
+$bootstrapVersion = '3.3.4';
+$fontawesomeVersion = '4.4.0';
+$jqueryVersion = '2.1.4';
 
 /**
  * read directories
  */
+
+$idf = new \IntlDateFormatter(\Locale::getDefault(), \IntlDateFormatter::SHORT, \IntlDateFormatter::SHORT);
 $dh = opendir($dir);
+//die('asd');
 $filenames = [];
+$CLIENTS = [];
+$TAGS = [];
+$DOMAINS = [];
+$HOSTS = [];
 while (false !== ($filename = readdir($dh))) {
 
-    if (preg_match("'" . $suffix . "$'", $filename)) {
+    if (
+        preg_match("'" . $suffix . "$'", $filename)
+        && (
+            (!isset($_GET['project'])) ||
+            (isset($_GET['project']) && stripslashes($_GET['project'] . $suffix) == $filename)
+        )
+    ) {
 
         $data = [
             'code' => null,
@@ -32,8 +51,8 @@ while (false !== ($filename = readdir($dh))) {
         $localDomain = $filename;
         $externalDomain = preg_replace("'" . $suffix . "'", '', $filename);
         $symlinkPath = $dir . $filename;
-        $realPath = realpath($dir . readlink($symlinkPath));
-        $baseurl = '/' . (file_exists($symlinkPath . '/web/app_dev.php') ? 'app_dev.php' : '');
+        $realPath = realpath($dir . (is_link($symlinkPath) ? readlink($symlinkPath) : $symlinkPath));
+        $baseurl = file_exists($symlinkPath . '/web/app_dev.php') ? '/app_dev.php' : ((file_exists($symlinkPath . '/web/') ? '/' : ':81'));
 
         # last modification time from repo
         $mtime = file_exists($symlinkPath . '/.git/') ? filemtime($symlinkPath . '/.git/') : filemtime($symlinkPath);
@@ -41,74 +60,134 @@ while (false !== ($filename = readdir($dh))) {
         # meta data
         $data['name'] = $externalDomain;
         $data['code'] = basename(dirname($realPath));
-        $data['date'] = date('Y-m-d H:i:s', $mtime);
+        $data['client_id'] = preg_match("'^([0-9]{3})_(.*)$'", $data['code']) ? preg_replace("'^([0-9]{3})_(.*)$'", "$1.", $data['code']) : null;
+        $data['job_id'] = preg_match("'^([0-9]{3})_([0-9]{3})_(.*)$'", $data['code']) ? preg_replace("'^([0-9]{3})_([0-9]{3})_(.*)$'", "$1.$2", $data['code']) : null;
+        $data['date'] = new \DateTime('@' . $mtime);
+        $data['current'] = ($data['date']->diff(new \DateTime())->days > 7) ? false : true;
+
+        $CLIENTS[] = $data['client_id'];
 
         # local and live URLs
         $data['url'] = 'http://' . $localDomain . $baseurl;
-        if(preg_match("'\.'", $externalDomain)){
+        if (preg_match("'\.'", $externalDomain)) {
             $data['liveUrl'] = 'http://' . $externalDomain;
         }
 
         # repo URL
         if (file_exists($symlinkPath . '/.git/config')) {
-            $gitConfig = parse_ini_file($symlinkPath . '/.git/config');
-            if (!empty($gitConfig['url'])) {
-                $data['repoUrl'] = preg_replace("'^git@(.*):(.*)\.git$'", "https://$1/$2", $gitConfig['url']);
+            $gitConfig = parse_ini_file($symlinkPath . '/.git/config', true);
+            if (!empty($gitConfig['remote origin']['url'])) {
+                $data['repoUrl'] = preg_replace("'^git@(.*):(.*)\.git$'", "https://$1/$2", $gitConfig['remote origin']['url']);
+            }
+            foreach ($gitConfig as $gName => $gData) {
+                if (preg_match("'^branch (.*)$'", $gName)) {
+                    $data['branches'][] = preg_replace("'^branch (.*)$'", "$1", $gName);
+                }
             }
         }
 
         # data from description file
-        $descriptionFile = null;
-        if (empty($descriptionFile) && file_exists(dirname($realPath) . '/DESCRIPTION-'.$externalDomain)) {
-            $descriptionFile = dirname($realPath) . '/DESCRIPTION-'.$externalDomain;
-        }
-        if (empty($descriptionFile) && file_exists(dirname($realPath) . '/DESCRIPTION')) {
-            $descriptionFile = dirname($realPath) . '/DESCRIPTION';
+        $descriptionFiles = [
+            $symlinkPath . '/DESCRIPTION',
+            dirname($realPath) . '/DESCRIPTION',
+            dirname($realPath) . '/DESCRIPTION-' . $externalDomain,
+        ];
+        foreach ($descriptionFiles as $descriptionFile) {
+            if (file_exists($descriptionFile)) {
+                $config = parse_ini_file($descriptionFile);
+                if (isset($config['localUrl'])) {
+                    $data['url'] = $config['localUrl'];
+                }
+                if (isset($config['devUrl'])) {
+                    $data['devUrl'] = $config['devUrl'];
+                }
+                if (isset($config['stageUrl'])) {
+                    $data['stageUrl'] = $config['stageUrl'];
+                }
+                if (isset($config['liveUrl'])) {
+                    $data['liveUrl'] = $config['liveUrl'];
+                }
+                if (isset($config['repoUrl'])) {
+                    $data['repoUrl'] = $config['repoUrl'];
+                }
+                if (isset($config['databaseUrl'])) {
+                    $data['databaseUrl'] = $config['databaseUrl'];
+                }
+                if (isset($config['crmUrl'])) {
+                    $data['crmUrl'] = $config['crmUrl'];
+                }
+                if (isset($config['redmineUrl'])) {
+                    $data['taskUrl'] = $config['redmineUrl'];
+                }
+                if (isset($config['code'])) {
+                    $data['code'] = $config['code'];
+                }
+                if (isset($config['tags'])) {
+                    $data['tags'] = explode(',', $config['tags']);
+                    $TAGS = array_merge($TAGS, $data['tags']);
+                }
+            }
         }
 
-        if(!empty($descriptionFile)){
-            $config = parse_ini_file($descriptionFile);
-            if (!empty($config['devUrl'])) {
-                $data['devUrl'] = $config['devUrl'];
-            }
-            if (!empty($config['stageUrl'])) {
-                $data['stageUrl'] = $config['stageUrl'];
-            }
-            if (!empty($config['liveUrl'])) {
-                $data['liveUrl'] = $config['liveUrl'];
-            }
-            if (!empty($config['repoUrl'])) {
-                $data['repoUrl'] = $config['repoUrl'];
-            }
-            if (!empty($config['databaseUrl'])) {
-                $data['databaseUrl'] = $config['databaseUrl'];
-            }
-            if (!empty($config['crmUrl'])) {
-                $data['crmUrl'] = $config['crmUrl'];
-            }
-            if (!empty($config['redmineUrl'])) {
-                $data['redmineUrl'] = $config['redmineUrl'];
-            }
-            if (!empty($config['tags'])) {
-                $data['tags'] = explode(',', $config['tags']);
+        foreach ($filesAsTags as $file => $tag) {
+            if (file_exists($symlinkPath . '/' . $file)) {
+                $data['tags'] = array_merge($data['tags'], $tag);
+                $TAGS = array_merge($TAGS, $tag);
             }
         }
 
-        $domains[] = (object)$data;
+        $data['tags'] = array_unique($data['tags']);
+        natcasesort($data['tags']);
 
-        $hosts[] = $filename;
+        $data['path'] = $symlinkPath;
+
+        $DOMAINS[] = (object)$data;
+
+        $HOSTS[] = $localDomain;
     }
 }
+
+sort($HOSTS);
+
+$CLIENTS = array_unique($CLIENTS);
+natcasesort($CLIENTS);
+
+$TAGS = array_unique($TAGS);
+natcasesort($TAGS);
 ?>
 <!DOCTYPE html>
 <html>
     <head>
         <title>VServer</title>
         <meta charset="UTF-8">
-        <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
-        <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap-theme.min.css">
+        <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/<?= $bootstrapVersion ?>/css/bootstrap.min.css">
+        <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/<?= $bootstrapVersion ?>/css/bootstrap-theme.min.css">
         <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.8.1/bootstrap-table.min.css">
-        <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css">
+        <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/font-awesome/<?= $fontawesomeVersion ?>/css/font-awesome.min.css">
+        <style type="text/css">
+            .bootstrap-table .search .close {
+                position: absolute;
+                top: 10px;
+                right: 10px;
+            }
+
+            .navbar .nav li.dropdown {
+                position: relative;
+            }
+
+            .navbar .nav li.dropdown .dropdown-menu {
+                max-height: calc(100vh - 50px);
+                overflow: auto;
+            }
+
+            a[data-copy] {
+                cursor: crosshair;
+            }
+
+            .tags a:not(:last-child):after {
+                content: ',';
+            }
+        </style>
     </head>
     <body>
         <nav class="navbar navbar-default">
@@ -118,30 +197,90 @@ while (false !== ($filename = readdir($dh))) {
                         <span class="glyphicon glyphicon-fire"></span>
                         VServer
                     </a>
-                    <? if (!empty($domains)): ?>
-                        <a class="navbar-toggle" data-toggle="modal" href="#hostsConfig">
-                            <span class="fa fa-fw fa-cog"></span>
-                        </a>
-                    <? endif; ?>
+                    <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1" aria-expanded="false">
+                        <span class="sr-only">Toggle navigation</span>
+                        <span class="fa fa-fw fa-bars"></span>
+                    </button>
                 </div>
-                <? if (!empty($domains)): ?>
-                    <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
-                        <ul class="nav navbar-nav navbar-right">
+                <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+                    <? if (!empty($CLIENTS) || !empty($TAGS)): ?>
+                        <ul class="nav navbar-nav">
+                            <? if (!empty($CLIENTS)): ?>
+                                <li class="dropdown">
+                                    <a href="javascript://undefined" title="clients list" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+                                        <span class="fa fa-fw fa-building-o"></span>
+                                        <span class="text">Clients</span>
+                                    </a>
+                                    <ul class="dropdown-menu tags">
+                                        <? foreach ($CLIENTS as $clientId): ?>
+                                            <li>
+                                                <a data-value="<?= $clientId ?>" href="javascript://undefined">
+                                                    <?= $clientId ?>
+                                                    <? if (isset($clientNames[$clientId])): ?>
+                                                        <?= $clientNames[$clientId] ?>
+                                                    <? endif; ?>
+                                                </a>
+                                            </li>
+                                        <? endforeach; ?>
+                                    </ul>
+                                </li>
+                            <? endif; ?>
+                            <? if (!empty($TAGS)): ?>
+                                <li class="dropdown">
+                                    <a href="javascript://undefined" title="tags list" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+                                        <span class="fa fa-fw fa-tags"></span>
+                                        <span class="text">Tags</span>
+                                    </a>
+                                    <ul class="dropdown-menu tags">
+                                        <? foreach ($TAGS as $tag): ?>
+                                            <li>
+                                                <a data-value="<?= $tag ?>" href="javascript://undefined">
+                                                    <?= $tag ?>
+                                                    <? if (isset($tagIcons[$tag])): ?>
+                                                        <em class="fa fa-fw fa-<?= $tagIcons[$tag] ?>"></em>
+                                                    <? endif; ?>
+                                                </a>
+                                            </li>
+                                        <? endforeach; ?>
+                                    </ul>
+                                </li>
+                            <? endif; ?>
+                        </ul>
+                    <? endif; ?>
+                    <ul class="nav navbar-nav navbar-right">
+                        <? if (!empty($phpMyAdminURL)): ?>
                             <li>
-                                <a data-toggle="modal" href="#hostsConfig">
-                                    <span class="fa fa-fw fa-cog"></span>
+                                <a href="<?= $phpMyAdminURL ?>" title="phpMyAdmin">
+                                    <em class="fa fa-fw fa-database"></em>
+                                        <span class="hidden-sm hidden-md hidden-lg">
+                                            phpMyAdmin
+                                            <small class="fa fa-external-link"></small>
+                                        </span>
                                 </a>
                             </li>
-                        </ul>
-                    </div>
-                <? endif; ?>
+                        <? endif; ?>
+                        <li>
+                            <a data-toggle="modal" href="#howto" title="Howto info">
+                                <span class="fa fa-fw fa-info-circle"></span>
+                                <span class="hidden-sm hidden-md hidden-lg">Howto</span>
+                            </a>
+                        </li>
+                        <? if (!empty($DOMAINS)): ?>
+                            <li>
+                                <a data-toggle="modal" href="#hostsConfig" title="Hosts config info">
+                                    <span class="fa fa-fw fa-cog"></span>
+                                    <span class="hidden-sm hidden-md hidden-lg">Hosts</span>
+                                </a>
+                            </li>
+                        <? endif; ?>
+                    </ul>
+                </div>
             </div>
         </nav>
-
         <section class="container">
             <div class="row">
                 <div class="col-sm-12">
-                    <? if (empty($domains)): ?>
+                    <? if (empty($DOMAINS)): ?>
                         <div class="alert alert-info">
                             <em class="fa fa-fw fa-info-circle"></em>
                             No directories configured. Create one with suffix <code><?= stripslashes($suffix) ?></code> in <code><?= $dir ?></code> on virtual machine and add it to hosts file in local machine.
@@ -152,7 +291,7 @@ while (false !== ($filename = readdir($dh))) {
                                data-toggle="table"
                                data-search="true"
                                data-pagination="true"
-                               data-page-size="20"
+                               data-page-size="<?= $itemsPerPage ?>"
                                data-sort-name="date"
                                data-sort-order="desc"
                             >
@@ -161,38 +300,51 @@ while (false !== ($filename = readdir($dh))) {
                                     <th data-field="name" data-sortable="true">
                                         <em class="fa fa-file-o"></em> Name
                                     </th>
-                                    <th data-field="code" data-sortable="true">
-                                        <em class="fa fa-fw fa-flash"></em> Code
-                                    </th>
-                                    <th>
-                                        <em class="fa fa-fw fa-tags"></em> Tags
-                                    </th>
-                                    <th data-field="date" data-sortable="true">
-                                        <em class="fa fa-fw fa-calendar"></em> Date
-                                    </th>
-                                    <th>
-                                        <em class="fa fa-fw fa-link"></em> Links
-                                    </th>
+                                    <? if (isset($_GET['action'])): ?>
+                                        <th>
+                                            <em class="fa fa-fw fa-terminal"></em> Command
+                                        </th>
+                                    <? else: ?>
+                                        <th style="width:140px;">
+                                            <em class="fa fa-fw fa-tags"></em> Tags
+                                        </th>
+                                        <th data-field="date" data-sortable="true" style="width:140px;">
+                                            <em class="fa fa-fw fa-calendar"></em> Date
+                                        </th>
+                                        <th style="width:140px;">
+                                            <em class="fa fa-fw fa-link"></em> Links
+                                        </th>
+                                    <? endif; ?>
                                 </tr>
                             </thead>
                             <tbody>
-                                <? foreach ($domains as $i => $domain): ?>
+                                <? foreach ($DOMAINS as $i => $domain): ?>
                                     <tr id="tr-id-<?= $i ?>" class="tr-class-<?= $i ?>">
-                                        <td>
+                                        <td class="<?= $domain->current ? 'lead' : '' ?>">
                                             <a href="<?= $domain->url ?>">
                                                 <?= $domain->name ?>
                                             </a>
                                         </td>
-                                        <td>
-                                            <?= $domain->code ?>
-                                        </td>
                                         <td class="tags">
+                                            <a data-copy="<?= $domain->code ?>" href="javascript://undefined">[<?= $domain->code ?>]</a>
+                                            <span class="input">
+                                                <input value="s <?= $domain->code ?>" style="position:absolute;top:-10000px;">
+                                            </span>
+                                            <? if (!empty($domain->client_id) && !empty($domain->job_id)): ?>
+                                                <a data-value="<?= $domain->client_id ?>" href="javascript://undefined">#<?= $domain->job_id ?></a>
+                                                <? if (isset($clientNames[$domain->client_id])): ?>
+                                                    <a data-value="<?= $domain->client_id ?>" href="javascript://undefined"><?= $clientNames[$domain->client_id] ?></a>
+                                                <? endif; ?>
+                                            <? endif; ?>
                                             <? if (!empty($domain->tags)): ?>
-                                                <a><?= implode('</a>, <a>', $domain->tags) ?></a>
+                                                <? foreach ($domain->tags as $tag): ?>
+                                                    <a data-value="<?= $tag ?>" href="javascript://undefined"><?= $tag ?></a>
+                                                <? endforeach; ?>
                                             <? endif; ?>
                                         </td>
                                         <td>
-                                            <?= $domain->date ?>
+                                            <span class="hidden"><?= $domain->date->format('Y-m-d H:i:s') ?></span>
+                                            <?= $idf->format($domain->date) ?>
                                         </td>
                                         <td>
                                             <div class="btn-group">
@@ -201,7 +353,7 @@ while (false !== ($filename = readdir($dh))) {
                                                 </a>
                                                 <? if (!empty($domain->devUrl)): ?>
                                                     <a class="btn btn-warning btn-xs" href="<?= $domain->devUrl ?>" title="Development page">
-                                                      <em class="fa fa-globe"> dev</em>
+                                                        <em class="fa fa-globe"> dev</em>
                                                     </a>
                                                 <? endif; ?>
                                                 <? if (!empty($domain->stageUrl)): ?>
@@ -215,7 +367,7 @@ while (false !== ($filename = readdir($dh))) {
                                                     </a>
                                                 <? endif; ?>
                                             </div>
-                                             <div class="btn-group">
+                                            <div class="btn-group">
                                                 <? if (!empty($domain->repoUrl)): ?>
                                                     <a class="btn btn-info btn-xs" href="<?= $domain->repoUrl ?>" title="GIT repository">
                                                         <em class="fa fa-code-fork"> GIT</em>
@@ -228,12 +380,12 @@ while (false !== ($filename = readdir($dh))) {
                                                 <? endif; ?>
                                                 <? if (!empty($domain->crmUrl)): ?>
                                                     <a class="btn btn-info btn-xs" href="<?= $domain->crmUrl ?>" title="CRM project">
-                                                        <em class="fa fa-user-md"> CRM</em>
+                                                        <em class="fa fa-user-secret"> CRM</em>
                                                     </a>
                                                 <? endif; ?>
-                                                <? if (!empty($domain->redmineUrl)): ?>
-                                                    <a class="btn btn-info btn-xs" href="<?= $domain->redmineUrl ?>" title="Redmine project">
-                                                        <em class="fa fa-tasks"> RM</em>
+                                                <? if (!empty($domain->taskUrl)): ?>
+                                                    <a class="btn btn-info btn-xs" href="<?= $domain->taskUrl ?>" title="Redmine project">
+                                                        <em class="fa fa-tasks"></em>
                                                     </a>
                                                 <? endif; ?>
                                             </div>
@@ -242,16 +394,53 @@ while (false !== ($filename = readdir($dh))) {
                                 <? endforeach ?>
                             </tbody>
                         </table>
+                        <div class="modal fade" id="howto">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                                        <h4 class="modal-title">
+                                            <em class="fa fa-fw fa-info-circle"></em>
+                                            Howto
+                                        </h4>
+                                    </div>
+                                    <div class="modal-body">
+                                        <ul type="1">
+                                            <li>Create project or clone project git repo in <code>./projects/</code> directory, eg: <code>./projects/{PROJECT_ID}/www/</code>.</li>
+                                            <li>Add project to <code>./symlinks.sh</code> script and run it, eg: <code>[example.com]=000_example/www</code>.</li>
+                                            <li>Create <code>DESCRIPTION</code> file in <code>./projects/{PROJECT_ID}/</code> directory with config options (buttons links):
+                                                <ul>
+                                                    <li><code>localUrl</code> local URL</li>
+                                                    <li><code>devUrl</code> development server URL</li>
+                                                    <li><code>stageUrl</code> stage server URL</li>
+                                                    <li><code>liveUrl</code> production server URL</li>
+                                                    <li><code>repoUrl</code> repository URL</li>
+                                                    <li><code>databaseUrl</code> database manager URL</li>
+                                                    <li><code>crmUrl</code> CRM manager URL</li>
+                                                    <li><code>taskUrl</code> Tasks system URL</li>
+                                                    <li><code>code</code> extra codename</li>
+                                                    <li><code>tags</code> list as CSV</li>
+                                                </ul>
+                                            </li>
+                                            <li>Reload this page, click <em class="fa fa-cog"> Hosts config</em> button, copy data and paste to Your local <code>/etc/hosts</code> file.</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                         <div class="modal fade" id="hostsConfig">
                             <div class="modal-dialog modal-lg">
                                 <div class="modal-content">
                                     <div class="modal-header">
                                         <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                                        <h4 class="modal-title">Hosts config</h4>
+                                        <h4 class="modal-title">
+                                            <em class="fa fa-fw fa-cog"></em>
+                                            Hosts config
+                                        </h4>
                                     </div>
                                     <div class="modal-body">
                                         Copy following code and paste into <code>/etc/hosts</code> file.
-                                        <textarea style="width: 100%;height: 400px; resize: none"><?= $_SERVER['SERVER_ADDR'] . "\t" . implode("\t", $hosts) ?></textarea>
+                                        <div class="form-control" style="width: 100%;height: 400px; resize: none"><?= $_SERVER['SERVER_ADDR'] . "\t" . implode("\t", $HOSTS) ?></div>
                                     </div>
                                 </div>
                             </div>
@@ -260,8 +449,58 @@ while (false !== ($filename = readdir($dh))) {
                 </div>
             </div>
         </section>
-        <script src="//code.jquery.com/jquery-2.1.4.min.js"></script>
-        <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
-        <script src="//cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.8.1/bootstrap-table.js"></script>
+        <script src="//code.jquery.com/jquery-<?= $jqueryVersion ?>.min.js"></script>
+        <script src="//maxcdn.bootstrapcdn.com/bootstrap/<?= $fontawesomeVersion ?>/js/bootstrap.min.js"></script>
+        <script src="//cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.8.1/bootstrap-table.min.js"></script>
+        <script src="//cdnjs.cloudflare.com/ajax/libs/bootstrap-growl/1.0.0/jquery.bootstrap-growl.min.js"></script>
+        <script type="text/javascript">
+            function tagFilter(tag) {
+                $('.bootstrap-table .search input').val(tag).trigger('drop');
+            }
+            var tag = decodeURIComponent(window.location.hash.replace('#', '').trim());
+            $(function () {
+                if (tag) {
+                    tagFilter(tag);
+                }
+            });
+            $(document)
+                .on('click', '.tags a[data-copy]', function (e) {
+                    $(this).next('.input').find('input').focus().select();
+                    var msg, type;
+                    try {
+                        var successful = document.execCommand('copy');
+                        msg = 'Copying text command was ' + (successful ? 'successful' : 'unsuccessful');
+                        type = successful ? 'success' : 'danger';
+                    } catch (err) {
+                        msg = 'Oops, unable to copy';
+                        type = 'info';
+                    }
+                    $.bootstrapGrowl(msg, {
+                        type: type
+                    });
+                })
+                .on('click', '.tags a[data-value]', function () {
+                    var tag = $(this).data('value');
+                    tagFilter(tag);
+                })
+                .on('click', '.bootstrap-table .search .close', function () {
+                    tagFilter('');
+                })
+                .on('keyup drop', '.bootstrap-table .search input', function () {
+                    var tag = $(this).val().trim();
+                    $('li.active').removeClass('active');
+                    if (tag) {
+                        $('.tags li [data-value="' + tag + '"]').closest('.tags').closest('li').addClass('active');
+                        $('.tags li [data-value="' + tag + '"]').closest('li').addClass('active');
+                        window.location.hash = tag;
+                        if ($('.bootstrap-table .search .close').length === 0) {
+                            $('.bootstrap-table .search input').after($('<a>').addClass('fa fa-times close').attr('href', 'javascript://undefined'));
+                        }
+                    } else if (!tag) {
+                        window.location.hash = "";
+                        $('.bootstrap-table .search .close').remove();
+                    }
+                });
+        </script>
     </body>
 </html>
