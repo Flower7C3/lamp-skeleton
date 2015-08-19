@@ -12,6 +12,8 @@ $clientNames = [
 //    'key' => 'name',
 ];
 $tagIcons = [
+    'evolution' => 'plus-square-o',
+    'support' => 'life-ring',
     'PHP' => 'code',
     'Symfony' => 'code',
     'webmaster' => 'user-secret',
@@ -36,4 +38,41 @@ $filesAsTags = [
     'gulpfile.js' => ['GULP', 'frontend'],
     'wp-config.php' => ['Wordpress', 'PHP'],
     'app/appKernel.php' => ['Symfony', 'PHP'],
+];
+$toolList = [
+    'repo'=>(object)[
+        'icon'=>'fork',
+        'title'=>'Repository manager',
+        'name'=>'GIT',
+    ],
+    'pma'=>(object)[
+        'icon'=>'database',
+        'title'=>'Database manager',
+        'name'=>'SQL',
+    ],
+    'crm'=>(object)[
+        'icon'=>'user-secret',
+        'title'=>'CRM project',
+        'name'=>'CRM',
+    ],
+    'task'=>(object)[
+        'icon'=>'tasks',
+        'title'=>'Redmine project',
+        'name'=>'Redmine',
+    ],
+    'wiki'=>(object)[
+        'icon'=>'wikipedia',
+        'title'=>'Wiki info',
+        'name'=>'wiki',
+    ],
+    'info'=>(object)[
+        'icon'=>'info-circle',
+        'title'=>'Info site',
+        'name'=>'info',
+    ],
+    'support'=>(object)[
+        'icon'=>'life-ring',
+        'title'=>'Support site',
+        'name'=>'support',
+    ],
 ];

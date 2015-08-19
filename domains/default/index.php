@@ -40,10 +40,8 @@ while (false !== ($filename = readdir($dh))) {
             'stageUrl' => null,
             'liveUrl' => null,
             'repoUrl' => null,
-            'databaseUrl' => null,
-            'crmUrl' => null,
-            'redmineUrl' => null,
             'date' => null,
+            'tools' => [],
             'tags' => [],
         ];
 
@@ -52,7 +50,15 @@ while (false !== ($filename = readdir($dh))) {
         $externalDomain = preg_replace("'" . $suffix . "'", '', $filename);
         $symlinkPath = $dir . $filename;
         $realPath = realpath($dir . (is_link($symlinkPath) ? readlink($symlinkPath) : $symlinkPath));
-        $baseurl = file_exists($symlinkPath . '/web/app_dev.php') ? '/app_dev.php' : ((file_exists($symlinkPath . '/web/') ? '/' : ':81'));
+        if(file_exists($symlinkPath . '/web/app_dev.php')){
+            $baseurl = '/app_dev.php';
+        }elseif(file_exists($symlinkPath . '/web/wp-config.php')){
+            $baseurl = ':81';
+        }elseif(file_exists($symlinkPath . '/web/')){
+            $baseurl = '/';
+        }else{
+            $baseurl = ':81';
+        }
 
         # last modification time from repo
         $mtime = file_exists($symlinkPath . '/.git/') ? filemtime($symlinkPath . '/.git/') : filemtime($symlinkPath);
@@ -94,33 +100,39 @@ while (false !== ($filename = readdir($dh))) {
         ];
         foreach ($descriptionFiles as $descriptionFile) {
             if (file_exists($descriptionFile)) {
-                $config = parse_ini_file($descriptionFile);
-                if (isset($config['localUrl'])) {
-                    $data['url'] = $config['localUrl'];
+                $config = parse_ini_file($descriptionFile, true);
+                if (isset($config['domains']['local'])) {
+                    $data['url'] = $config['domains']['local'];
                 }
-                if (isset($config['devUrl'])) {
-                    $data['devUrl'] = $config['devUrl'];
+                if (isset($config['domains']['dev'])) {
+                    $data['devUrl'] = $config['domains']['dev'];
                 }
-                if (isset($config['stageUrl'])) {
-                    $data['stageUrl'] = $config['stageUrl'];
+                if (isset($config['domains']['stage'])) {
+                    $data['stageUrl'] = $config['domains']['stage'];
                 }
-                if (isset($config['liveUrl'])) {
-                    $data['liveUrl'] = $config['liveUrl'];
+                if (isset($config['domains']['prod'])) {
+                    $data['liveUrl'] = $config['domains']['prod'];
                 }
-                if (isset($config['repoUrl'])) {
-                    $data['repoUrl'] = $config['repoUrl'];
-                }
-                if (isset($config['databaseUrl'])) {
-                    $data['databaseUrl'] = $config['databaseUrl'];
-                }
-                if (isset($config['crmUrl'])) {
-                    $data['crmUrl'] = $config['crmUrl'];
-                }
-                if (isset($config['redmineUrl'])) {
-                    $data['taskUrl'] = $config['redmineUrl'];
+                if (isset($config['tools']['repo'])) {
+                    $data['repoUrl'] = $config['tools']['repo'];
+                    unset($config['tools']);
                 }
                 if (isset($config['code'])) {
                     $data['code'] = $config['code'];
+                }
+                if (isset($config['tools'])) {
+                    foreach($config['tools'] as $key => $url){
+                        $data['tools'][$key] = (object)[];
+                        if(isset($toolList[$key])){
+                           $data['tools'][$key] = clone $toolList[$key];
+                        }else{
+                            $data['tools'][$key] = (object)array(
+                                'title'=>$key,
+                                'name'=>$key,
+                            );
+                        }
+                       $data['tools'][$key]->url = $url;
+                    }
                 }
                 if (isset($config['tags'])) {
                     $data['tags'] = explode(',', $config['tags']);
@@ -186,6 +198,10 @@ natcasesort($TAGS);
 
             .tags a:not(:last-child):after {
                 content: ',';
+            }
+
+            .fixed-table-body {
+                overflow: unset;
             }
         </style>
     </head>
@@ -373,20 +389,23 @@ natcasesort($TAGS);
                                                         <em class="fa fa-code-fork"> GIT</em>
                                                     </a>
                                                 <? endif; ?>
-                                                <? if (!empty($domain->databaseUrl)): ?>
-                                                    <a class="btn btn-info btn-xs" href="<?= $domain->databaseUrl ?>" title="Database manager">
-                                                        <em class="fa fa-database"> SQL</em>
+                                                <? if (!empty($domain->tools)): ?>
+                                                    <a href="javascript://undefined" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                                        <em class="fa fa-caret-square-o-down"></em>
+                                                        Tools
                                                     </a>
-                                                <? endif; ?>
-                                                <? if (!empty($domain->crmUrl)): ?>
-                                                    <a class="btn btn-info btn-xs" href="<?= $domain->crmUrl ?>" title="CRM project">
-                                                        <em class="fa fa-user-secret"> CRM</em>
-                                                    </a>
-                                                <? endif; ?>
-                                                <? if (!empty($domain->taskUrl)): ?>
-                                                    <a class="btn btn-info btn-xs" href="<?= $domain->taskUrl ?>" title="Redmine project">
-                                                        <em class="fa fa-tasks"></em>
-                                                    </a>
+                                                    <ul class="dropdown-menu">
+                                                        <? foreach ($domain->tools as $tool): ?>
+                                                            <li>
+                                                                <a href="<?= $tool->url ?>" title="<?= $tool->title?>">
+                                                                    <? if(!empty($tool->icon)): ?>
+                                                                        <em class="fa fa-<?= $tool->icon?>"></em>
+                                                                    <? endif; ?>
+                                                                    <?= $tool->name?>
+                                                                </a>
+                                                            <li>
+                                                        <? endforeach; ?>
+                                                    <ul>
                                                 <? endif; ?>
                                             </div>
                                         </td>
@@ -409,18 +428,22 @@ natcasesort($TAGS);
                                             <li>Create project or clone project git repo in <code>./projects/</code> directory, eg: <code>./projects/{PROJECT_ID}/www/</code>.</li>
                                             <li>Add project to <code>./symlinks.sh</code> script and run it, eg: <code>[example.com]=000_example/www</code>.</li>
                                             <li>Create <code>DESCRIPTION</code> file in <code>./projects/{PROJECT_ID}/</code> directory with config options (buttons links):
-                                                <ul>
-                                                    <li><code>localUrl</code> local URL</li>
-                                                    <li><code>devUrl</code> development server URL</li>
-                                                    <li><code>stageUrl</code> stage server URL</li>
-                                                    <li><code>liveUrl</code> production server URL</li>
-                                                    <li><code>repoUrl</code> repository URL</li>
-                                                    <li><code>databaseUrl</code> database manager URL</li>
-                                                    <li><code>crmUrl</code> CRM manager URL</li>
-                                                    <li><code>taskUrl</code> Tasks system URL</li>
-                                                    <li><code>code</code> extra codename</li>
-                                                    <li><code>tags</code> list as CSV</li>
-                                                </ul>
+                                                <pre>
+code            =   project code
+tags            =   tag1,tag2,tag3
+
+[domains]
+local           =   
+dev             =   
+stage           =   
+prod            =   
+
+[tools]
+repo            =   
+pma             =   
+crm             =   
+task            =   
+                                                </pre>
                                             </li>
                                             <li>Reload this page, click <em class="fa fa-cog"> Hosts config</em> button, copy data and paste to Your local <code>/etc/hosts</code> file.</li>
                                         </ul>
