@@ -1,7 +1,14 @@
 ---
-    php_ppa: php5
     doc_root: /vagrant/domains/
-    sys_packages: ["phpmyadmin","git","vim","htop","mc","imagemagick","default-jre","default-jdk"]
+    repositories:
+        - "ppa:ondrej/php5"
+        - "ppa:tuxpoldo/phpmyadmin"
+    sys_packages: ["phpmyadmin","git","vim","htop","mc","imagemagick","default-jre","default-jdk","optipng","jpegoptim","npm"]
     dist: precise
-    php_packages: ["php5-curl","php5-common","php5-imagick","php5-mysql","php5-xdebug", "php5-gd"]
+    php_packages: ["php5-curl","php5-common","php5-imagick","php5-mysql","php5-xdebug", "php5-gd", "php5-intl"]
+    mysql_packages: ["mysql-server","mysql-client","python-mysqldb"]
     pecl_packages: []
+    symlinks:
+        - { src: "/usr/bin/optipng", dest: "/usr/local/bin/optipng" }
+        - { src: "/usr/bin/jpegoptim", dest: "/usr/local/bin/jpegoptim" }
+        - { src: "/usr/bin/nodejs", dest: "/usr/bin/node" }

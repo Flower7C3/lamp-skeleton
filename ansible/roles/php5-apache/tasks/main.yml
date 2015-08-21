@@ -7,7 +7,12 @@
               regexp='date.timezone ='
               line='date.timezone = {{ timezone }}'
 
-- name: enabls short tags in apache2 php.ini
+- name: enable short tags in apache2 php.ini
   lineinfile: dest=/etc/php5/apache2/php.ini
               regexp='short_tag_open ='
-              line='short_tag_open = On’
+              line='short_tag_open = On'
+
+- name: enable short tags in apache2 php.ini
+  lineinfile: dest=/etc/php5/apache2/php.ini
+              regexp='short_open_tag ='
+              line='short_open_tag = On'

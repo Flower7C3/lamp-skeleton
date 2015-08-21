@@ -5,7 +5,6 @@
 
 - name: Install Apache Modules
   apache2_module: state=present name={{ item }}
-  notify: restart apache
   with_items:
     - rewrite
     - vhost_alias

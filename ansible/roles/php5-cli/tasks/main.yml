@@ -6,3 +6,8 @@
   lineinfile: dest=/etc/php5/cli/php.ini
               regexp='date.timezone ='
               line='date.timezone = {{ timezone }}'
+
+- name: enable short tags in cli php.ini
+  lineinfile: dest=/etc/php5/cli/php.ini
+              regexp='short_open_tag ='
+              line='short_open_tag = On'
