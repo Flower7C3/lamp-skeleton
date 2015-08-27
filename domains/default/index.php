@@ -83,6 +83,7 @@ while (false !== ($filename = readdir($dh))) {
         if (file_exists($symlinkPath . '/.git/config')) {
             $gitConfig = parse_ini_file($symlinkPath . '/.git/config', true);
             if (!empty($gitConfig['remote origin']['url'])) {
+                $data['path']['repo'] = $gitConfig['remote origin']['url'];
                 $data['repoUrl'] = preg_replace("'^git@(.*):(.*)\.git$'", "https://$1/$2", $gitConfig['remote origin']['url']);
             }
             foreach ($gitConfig as $gName => $gData) {
@@ -133,6 +134,7 @@ while (false !== ($filename = readdir($dh))) {
                         }
                        $data['tools'][$key]->url = $url;
                     }
+                    sort($data['tools']);
                 }
                 if (isset($config['tags'])) {
                     $data['tags'] = explode(',', $config['tags']);
@@ -151,7 +153,9 @@ while (false !== ($filename = readdir($dh))) {
         $data['tags'] = array_unique($data['tags']);
         natcasesort($data['tags']);
 
-        $data['path'] = $symlinkPath;
+        $data['path']['real'] = $realPath;
+        $data['path']['link'] = $symlinkPath;
+
 
         $DOMAINS[] = (object)$data;
 
@@ -193,11 +197,26 @@ natcasesort($TAGS);
             }
 
             a[data-copy] {
-                cursor: crosshair;
+                cursor: copy;
+            }
+            .input input {
+                position:absolute;
+                top:-10000px;
             }
 
             .tags a:not(:last-child):after {
                 content: ',';
+            }
+            .tags {
+                font-size: 0.8em;
+            }
+
+            .date {
+                font-size: 0.8em;
+                width: 100px;
+            }
+            .links {
+                width: 273px;
             }
 
             .fixed-table-body {
@@ -341,73 +360,114 @@ natcasesort($TAGS);
                                                 <?= $domain->name ?>
                                             </a>
                                         </td>
-                                        <td class="tags">
-                                            <a data-copy="<?= $domain->code ?>" href="javascript://undefined">[<?= $domain->code ?>]</a>
-                                            <span class="input">
-                                                <input value="s <?= $domain->code ?>" style="position:absolute;top:-10000px;">
-                                            </span>
-                                            <? if (!empty($domain->client_id) && !empty($domain->job_id)): ?>
-                                                <a data-value="<?= $domain->client_id ?>" href="javascript://undefined">#<?= $domain->job_id ?></a>
-                                                <? if (isset($clientNames[$domain->client_id])): ?>
-                                                    <a data-value="<?= $domain->client_id ?>" href="javascript://undefined"><?= $clientNames[$domain->client_id] ?></a>
+                                        <td>
+                                            <span class="tags">
+                                                <a data-copy="#domain-<?= $i ?>-code" href="javascript://undefined">[<?= $domain->code ?>]</a>
+                                                <? if (!empty($domain->client_id) && !empty($domain->job_id)): ?>
+                                                    <? if (isset($clientNames[$domain->client_id])): ?>
+                                                        <a data-value="<?= $domain->client_id ?>" href="javascript://undefined"><strong><?= $clientNames[$domain->client_id] ?></strong> (#<?= $domain->job_id ?>)</a>
+                                                    <? else: ?>
+                                                        <a data-value="<?= $domain->client_id ?>" href="javascript://undefined"></a>
+                                                    <? endif; ?>
                                                 <? endif; ?>
-                                            <? endif; ?>
-                                            <? if (!empty($domain->tags)): ?>
-                                                <? foreach ($domain->tags as $tag): ?>
-                                                    <a data-value="<?= $tag ?>" href="javascript://undefined"><?= $tag ?></a>
-                                                <? endforeach; ?>
-                                            <? endif; ?>
+                                                <? if (!empty($domain->tags)): ?>
+                                                    <? foreach ($domain->tags as $tag): ?>
+                                                        <a data-value="<?= $tag ?>" href="javascript://undefined"><?= $tag ?></a>
+                                                    <? endforeach; ?>
+                                                <? endif; ?>
+                                            </span>
                                         </td>
                                         <td>
-                                            <span class="hidden"><?= $domain->date->format('Y-m-d H:i:s') ?></span>
-                                            <?= $idf->format($domain->date) ?>
+                                            <div class="date">
+                                                <span class="hidden"><?= $domain->date->format('Y-m-d H:i:s') ?></span>
+                                                <?= $idf->format($domain->date) ?>
+                                            </div>
                                         </td>
                                         <td>
-                                            <div class="btn-group">
+                                            <div class="btn-group links">
                                                 <a class="btn btn-primary btn-xs" href="<?= $domain->url ?>" title="Local development page">
                                                     <em class="fa fa-fw fa-code"></em>
                                                 </a>
                                                 <? if (!empty($domain->devUrl)): ?>
                                                     <a class="btn btn-warning btn-xs" href="<?= $domain->devUrl ?>" title="Development page">
-                                                        <em class="fa fa-globe"> dev</em>
+                                                        <em class="fa fa-globe"> Dev</em>
                                                     </a>
                                                 <? endif; ?>
                                                 <? if (!empty($domain->stageUrl)): ?>
                                                     <a class="btn btn-warning btn-xs" href="<?= $domain->stageUrl ?>" title="Stage page">
-                                                        <em class="fa fa-globe"> stage</em>
+                                                        <em class="fa fa-globe"> Stage</em>
                                                     </a>
                                                 <? endif; ?>
                                                 <? if (!empty($domain->liveUrl)): ?>
                                                     <a class="btn btn-success btn-xs" href="<?= $domain->liveUrl ?>" title="Live page">
-                                                        <em class="fa fa-globe"> prod</em>
-                                                    </a>
-                                                <? endif; ?>
-                                            </div>
-                                            <div class="btn-group">
-                                                <? if (!empty($domain->repoUrl)): ?>
-                                                    <a class="btn btn-info btn-xs" href="<?= $domain->repoUrl ?>" title="GIT repository">
-                                                        <em class="fa fa-code-fork"> GIT</em>
+                                                        <em class="fa fa-globe"> Live</em>
                                                     </a>
                                                 <? endif; ?>
                                                 <? if (!empty($domain->tools)): ?>
-                                                    <a href="javascript://undefined" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                                        <em class="fa fa-caret-square-o-down"></em>
-                                                        Tools
+                                                    <div class="btn-group" role="group">
+                                                        <a href="javascript://undefined" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" title="External tools">
+                                                            <em class="fa fa-wrench"> Tools</em>
+                                                        </a>
+                                                        <ul class="dropdown-menu">
+                                                             <? if (!empty($domain->repoUrl)): ?>
+                                                                <li>
+                                                                    <a href="<?= $domain->repoUrl ?>" title="GIT repository">
+                                                                        <em class="fa fa-fw fa-code-fork"></em>
+                                                                        GIT
+                                                                    </a>
+                                                                </li>
+                                                            <? endif; ?>
+                                                            <? foreach ($domain->tools as $tool): ?>
+                                                                <li>
+                                                                    <a href="<?= $tool->url ?>" title="<?= $tool->title?>">
+                                                                        <? if(!empty($tool->icon)): ?>
+                                                                            <em class="fa fa-fw fa-<?= $tool->icon?>"></em>
+                                                                        <? endif; ?>
+                                                                        <?= $tool->name?>
+                                                                    </a>
+                                                                <li>
+                                                            <? endforeach; ?>
+                                                        </ul>
+                                                    </div>
+                                                <? endif; ?>
+                                                <div class="btn-group" role="group">
+                                                    <a href="javascript://undefined" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" title="External tools">
+                                                        <em class="fa fa-copy"> Copy</em>
                                                     </a>
                                                     <ul class="dropdown-menu">
-                                                        <? foreach ($domain->tools as $tool): ?>
-                                                            <li>
-                                                                <a href="<?= $tool->url ?>" title="<?= $tool->title?>">
-                                                                    <? if(!empty($tool->icon)): ?>
-                                                                        <em class="fa fa-<?= $tool->icon?>"></em>
-                                                                    <? endif; ?>
-                                                                    <?= $tool->name?>
-                                                                </a>
-                                                            <li>
-                                                        <? endforeach; ?>
-                                                    <ul>
-                                                <? endif; ?>
+                                                        <li>
+                                                            <a href="javascript://undefined" data-copy="#domain-<?= $i ?>-code" title="Copy project code">
+                                                                <em class="fa fa-fw fa-barcode"></em> Code
+                                                            </a>
+                                                        </li>
+                                                        <li>
+                                                            <a href="javascript://undefined" data-copy="#domain-<?= $i ?>-realpath" title="Copy real path">
+                                                                <em class="fa fa-fw fa-folder"></em> Real path
+                                                            </a>
+                                                        </li>
+                                                        <li>
+                                                            <a href="javascript://undefined" data-copy="#domain-<?= $i ?>-symlink" title="Copy symlink path">
+                                                                <em class="fa fa-fw fa-folder-o"></em> Symlink path
+                                                            </a>
+                                                        </li>
+                                                        <? if(!empty($domain->path['repo'])): ?>
+                                                        <li>
+                                                            <a href="javascript://undefined" data-copy="#domain-<?= $i ?>-repo" title="Copy repo path">
+                                                                <em class="fa fa-fw fa-code-fork"></em> Repo path
+                                                            </a>
+                                                        </li>
+                                                        <? endif; ?>
+                                                    </ul>
+                                                </div>
                                             </div>
+                                            <span class="input">
+                                                <input id="domain-<?= $i ?>-code" value="s <?= $domain->code ?>">
+                                                <input id="domain-<?= $i ?>-realpath" value="<?= $domain->path['real']?>">
+                                                <input id="domain-<?= $i ?>-symlink" value="<?= $domain->path['link']?>">
+                                                <? if(!empty($domain->path['repo'])): ?>
+                                                    <input id="domain-<?= $i ?>-repo" value="git clone <?= $domain->path['repo']?> .">
+                                                <? endif; ?>
+                                            </span>
                                         </td>
                                     </tr>
                                 <? endforeach ?>
@@ -487,15 +547,17 @@ task            =
                 }
             });
             $(document)
-                .on('click', '.tags a[data-copy]', function (e) {
-                    $(this).next('.input').find('input').focus().select();
+                .on('click', 'a[data-copy]', function (e) {
+                    element = $(this).data('copy');
+                    $element = $(element);
+                    $element.focus().select();
                     var msg, type;
                     try {
                         var successful = document.execCommand('copy');
-                        msg = 'Copying text command was ' + (successful ? 'successful' : 'unsuccessful');
+                        msg = (successful ? ('Copy data success: <b>' + $element.val() + '</b>') : 'Sorry, can\'t copy data.');
                         type = successful ? 'success' : 'danger';
                     } catch (err) {
-                        msg = 'Oops, unable to copy';
+                        msg = 'Oops, unable to copy.';
                         type = 'info';
                     }
                     $.bootstrapGrowl(msg, {
