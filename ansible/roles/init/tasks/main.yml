@@ -3,7 +3,7 @@
   sudo: yes
   apt: update_cache=yes
 
-- name: Install System Packages
+- name: Install system packages
   sudo: yes
   apt: pkg={{ item }} state=latest
   with_items:
@@ -20,10 +20,15 @@
   sudo: yes
   apt: update_cache=yes
 
-- name: Install Extra Packages
+- name: Install extra packages
   sudo: yes
   apt: pkg={{ item }} state=latest
   with_items: sys_packages
+
+- name: Install ruby packages
+  sudo: yes
+  gem: name={{ item }} state=latest
+  with_items: gem_packages
 
 - name: Configure the timezone
   sudo: yes

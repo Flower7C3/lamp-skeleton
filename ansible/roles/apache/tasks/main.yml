@@ -15,6 +15,10 @@
 - shell: apache2 -v
   register: apache_version
 
+- name: Change ports conf
+  sudo: yes
+  template: src=ports.conf.tpl dest=/etc/apache2/ports.conf
+
 - name: Change default apache2.4 site
   sudo: yes
   template: src=vhost24.conf.tpl dest=/etc/apache2/sites-available/000-default.conf

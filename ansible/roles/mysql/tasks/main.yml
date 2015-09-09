@@ -1,10 +1,11 @@
 ---
-- name: mysql | Install MySQL Packages
+- name: Install MySQL Packages
   sudo: yes
   apt: pkg={{ item }} state=latest
   with_items: mysql_packages
+  notify: restart mysql
 
-- name: mysql | Update root password for all root accounts
+- name: Update root password for all root accounts
   mysql_user: name=root host={{ item }} check_implicit_admin=yes password={{ mysql.root_password }} login_user=root login_password={{ mysql.root_password }}
   with_items:
     # - "{{ hostname }}"
@@ -12,8 +13,8 @@
     - ::1
     - localhost
 
-- name: mysql | Create databases
+- name: Create databases
   mysql_db: name={{ mysql.database }} state=present login_user=root login_password={{ mysql.root_password }}
 
-- name: mysql | Create users
+- name: Create users
   mysql_user: name={{ mysql.user }} password={{ mysql.password }} priv={{ mysql.database }}.*:ALL state=present login_user=root login_password={{ mysql.root_password }}
