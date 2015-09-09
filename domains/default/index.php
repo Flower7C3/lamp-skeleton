@@ -50,13 +50,13 @@ while (false !== ($filename = readdir($dh))) {
         $externalDomain = preg_replace("'" . $suffix . "'", '', $filename);
         $symlinkPath = $dir . $filename;
         $realPath = realpath($dir . (is_link($symlinkPath) ? readlink($symlinkPath) : $symlinkPath));
-        if(file_exists($symlinkPath . '/web/app_dev.php')){
+        if (file_exists($symlinkPath . '/web/app_dev.php')) {
             $baseurl = '/app_dev.php';
-        }elseif(file_exists($symlinkPath . '/web/wp-config.php')){
+        } elseif (file_exists($symlinkPath . '/web/wp-config.php')) {
             $baseurl = ':81';
-        }elseif(file_exists($symlinkPath . '/web/')){
+        } elseif (file_exists($symlinkPath . '/web/')) {
             $baseurl = '/';
-        }else{
+        } else {
             $baseurl = ':81';
         }
 
@@ -96,8 +96,11 @@ while (false !== ($filename = readdir($dh))) {
         # data from description file
         $descriptionFiles = [
             $symlinkPath . '/DESCRIPTION',
+            $symlinkPath . '/DESCRIPTION.ini',
             dirname($realPath) . '/DESCRIPTION',
+            dirname($realPath) . '/DESCRIPTION.ini',
             dirname($realPath) . '/DESCRIPTION-' . $externalDomain,
+            dirname($realPath) . '/DESCRIPTION-' . $externalDomain . '.ini',
         ];
         foreach ($descriptionFiles as $descriptionFile) {
             if (file_exists($descriptionFile)) {
@@ -116,25 +119,48 @@ while (false !== ($filename = readdir($dh))) {
                 }
                 if (isset($config['tools']['repo'])) {
                     $data['repoUrl'] = $config['tools']['repo'];
-                    unset($config['tools']);
+                    unset($config['tools']['repo']);
                 }
                 if (isset($config['code'])) {
                     $data['code'] = $config['code'];
                 }
                 if (isset($config['tools'])) {
-                    foreach($config['tools'] as $key => $url){
-                        $data['tools'][$key] = (object)[];
-                        if(isset($toolList[$key])){
-                           $data['tools'][$key] = clone $toolList[$key];
-                        }else{
+                    foreach ($config['tools'] as $key => $url) {
+                        if (isset($toolList[$key])) {
+                            $data['tools'][$key] = clone $toolList[$key];
+                        } else {
                             $data['tools'][$key] = (object)array(
-                                'title'=>$key,
-                                'name'=>$key,
+                                'title' => $key,
+                                'name' => $key,
                             );
                         }
-                       $data['tools'][$key]->url = $url;
+                        $data['tools'][$key]->url = $url;
                     }
-                    sort($data['tools']);
+                    ksort($data['tools']);
+                }
+                if (isset($config['info'])) {
+                    foreach ($config['info'] as $key => $valReal) {
+                        $temp = (object)array(
+                            'title' => $key,
+                            'code' => md5($key),
+                            'name' => $key,
+                            'value' => $valReal,
+                            'valueReal' => $valReal,
+                            'icons' => array(),
+                        );
+                        if (preg_match("'ssh'", $key)) {
+                            $temp->icons[] = 'terminal';
+                            $temp->name = preg_replace("'ssh'", '', $temp->name);
+                        }
+                        if (preg_match("'sql'", $key)) {
+                            $temp->icons[] = 'database';
+                            $temp->name = preg_replace("'sql'", '', $temp->name);
+                        }
+                        if (preg_match("'pass'", $key)) {
+                            $temp->value = '***';
+                        }
+                        $data['info'][$key] = $temp;
+                    }
                 }
                 if (isset($config['tags'])) {
                     $data['tags'] = explode(',', $config['tags']);
@@ -199,14 +225,16 @@ natcasesort($TAGS);
             a[data-copy] {
                 cursor: copy;
             }
+
             .input input {
-                position:absolute;
-                top:-10000px;
+                position: absolute;
+                top: -10000px;
             }
 
             .tags a:not(:last-child):after {
                 content: ',';
             }
+
             .tags {
                 font-size: 0.8em;
             }
@@ -215,12 +243,19 @@ natcasesort($TAGS);
                 font-size: 0.8em;
                 width: 100px;
             }
+
             .links {
-                width: 273px;
+                width: 317px;
             }
 
             .fixed-table-body {
                 overflow: unset;
+            }
+
+            .loading {
+                background-image: url(img/220.GIF);
+                background-position: top center;
+                background-repeat: no-repeat;
             }
         </style>
     </head>
@@ -246,10 +281,10 @@ natcasesort($TAGS);
                                         <span class="fa fa-fw fa-building-o"></span>
                                         <span class="text">Clients</span>
                                     </a>
-                                    <ul class="dropdown-menu tags">
+                                    <ul class="dropdown-menu">
                                         <? foreach ($CLIENTS as $clientId): ?>
                                             <li>
-                                                <a data-value="<?= $clientId ?>" href="javascript://undefined">
+                                                <a data-tag="<?= $clientId ?>" href="javascript://undefined">
                                                     <?= $clientId ?>
                                                     <? if (isset($clientNames[$clientId])): ?>
                                                         <?= $clientNames[$clientId] ?>
@@ -266,10 +301,10 @@ natcasesort($TAGS);
                                         <span class="fa fa-fw fa-tags"></span>
                                         <span class="text">Tags</span>
                                     </a>
-                                    <ul class="dropdown-menu tags">
+                                    <ul class="dropdown-menu">
                                         <? foreach ($TAGS as $tag): ?>
                                             <li>
-                                                <a data-value="<?= $tag ?>" href="javascript://undefined">
+                                                <a data-tag="<?= $tag ?>" href="javascript://undefined">
                                                     <?= $tag ?>
                                                     <? if (isset($tagIcons[$tag])): ?>
                                                         <em class="fa fa-fw fa-<?= $tagIcons[$tag] ?>"></em>
@@ -312,7 +347,7 @@ natcasesort($TAGS);
                 </div>
             </div>
         </nav>
-        <section class="container">
+        <section class="container loading" id="main">
             <div class="row">
                 <div class="col-sm-12">
                     <? if (empty($DOMAINS)): ?>
@@ -332,24 +367,26 @@ natcasesort($TAGS);
                             >
                             <thead>
                                 <tr>
-                                    <th data-field="name" data-sortable="true">
+                                    <th
+                                        data-field="name"
+                                        data-sortable="true"
+                                        >
                                         <em class="fa fa-file-o"></em> Name
                                     </th>
-                                    <? if (isset($_GET['action'])): ?>
-                                        <th>
-                                            <em class="fa fa-fw fa-terminal"></em> Command
-                                        </th>
-                                    <? else: ?>
-                                        <th style="width:140px;">
-                                            <em class="fa fa-fw fa-tags"></em> Tags
-                                        </th>
-                                        <th data-field="date" data-sortable="true" style="width:140px;">
-                                            <em class="fa fa-fw fa-calendar"></em> Date
-                                        </th>
-                                        <th style="width:140px;">
-                                            <em class="fa fa-fw fa-link"></em> Links
-                                        </th>
-                                    <? endif; ?>
+                                    <th
+                                        style="width:140px;">
+                                        <em class="fa fa-fw fa-tags"></em> Tags
+                                    </th>
+                                    <th
+                                        data-field="date"
+                                        data-sortable="true"
+                                        style="width:140px;">
+                                        <em class="fa fa-fw fa-calendar"></em> Date
+                                    </th>
+                                    <th
+                                        style="width:140px;">
+                                        <em class="fa fa-fw fa-link"></em> Links
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -362,17 +399,19 @@ natcasesort($TAGS);
                                         </td>
                                         <td>
                                             <span class="tags">
-                                                <a data-copy="#domain-<?= $i ?>-code" href="javascript://undefined">[<?= $domain->code ?>]</a>
+                                                <? if (!empty($domain->code)): ?>
+                                                    <a data-copy="#domain-<?= $i ?>-code" href="javascript://undefined">[<?= $domain->code ?>]</a>
+                                                <? endif; ?>
                                                 <? if (!empty($domain->client_id) && !empty($domain->job_id)): ?>
                                                     <? if (isset($clientNames[$domain->client_id])): ?>
-                                                        <a data-value="<?= $domain->client_id ?>" href="javascript://undefined"><strong><?= $clientNames[$domain->client_id] ?></strong> (#<?= $domain->job_id ?>)</a>
+                                                        <a data-tag="<?= $domain->client_id ?>" href="javascript://undefined"><strong><?= $clientNames[$domain->client_id] ?></strong> (#<?= $domain->job_id ?>)</a>
                                                     <? else: ?>
-                                                        <a data-value="<?= $domain->client_id ?>" href="javascript://undefined"></a>
+                                                        <a data-tag="<?= $domain->client_id ?>" href="javascript://undefined"></a>
                                                     <? endif; ?>
                                                 <? endif; ?>
                                                 <? if (!empty($domain->tags)): ?>
                                                     <? foreach ($domain->tags as $tag): ?>
-                                                        <a data-value="<?= $tag ?>" href="javascript://undefined"><?= $tag ?></a>
+                                                        <a data-tag="<?= $tag ?>" href="javascript://undefined"><?= $tag ?></a>
                                                     <? endforeach; ?>
                                                 <? endif; ?>
                                             </span>
@@ -403,13 +442,13 @@ natcasesort($TAGS);
                                                         <em class="fa fa-globe"> Live</em>
                                                     </a>
                                                 <? endif; ?>
-                                                <? if (!empty($domain->tools)): ?>
+                                                <? if (!empty($domain->tools) || !empty($domain->repoUrl)): ?>
                                                     <div class="btn-group" role="group">
                                                         <a href="javascript://undefined" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" title="External tools">
                                                             <em class="fa fa-wrench"> Tools</em>
                                                         </a>
                                                         <ul class="dropdown-menu">
-                                                             <? if (!empty($domain->repoUrl)): ?>
+                                                            <? if (!empty($domain->repoUrl)): ?>
                                                                 <li>
                                                                     <a href="<?= $domain->repoUrl ?>" title="GIT repository">
                                                                         <em class="fa fa-fw fa-code-fork"></em>
@@ -418,14 +457,39 @@ natcasesort($TAGS);
                                                                 </li>
                                                             <? endif; ?>
                                                             <? foreach ($domain->tools as $tool): ?>
+                                                            <li>
+                                                                <a href="<?= $tool->url ?>" title="<?= $tool->title ?>">
+                                                                    <? if (!empty($tool->icon)): ?>
+                                                                        <em class="fa fa-fw fa-<?= $tool->icon ?>"></em>
+                                                                    <? endif; ?>
+                                                                    <?= $tool->name ?>
+                                                                </a>
+                                                            <li>
+                                                                <? endforeach; ?>
+                                                        </ul>
+                                                    </div>
+                                                <? endif; ?>
+                                                <? if (!empty($domain->info)): ?>
+                                                    <div class="btn-group" role="group">
+                                                        <a href="javascript://undefined" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" title="Infos">
+                                                            <em class="fa fa-info-circle"> Info</em>
+                                                        </a>
+                                                        <ul class="dropdown-menu">
+                                                            <? foreach ($domain->info as $info): ?>
                                                                 <li>
-                                                                    <a href="<?= $tool->url ?>" title="<?= $tool->title?>">
-                                                                        <? if(!empty($tool->icon)): ?>
-                                                                            <em class="fa fa-fw fa-<?= $tool->icon?>"></em>
-                                                                        <? endif; ?>
-                                                                        <?= $tool->name?>
+                                                                    <a href="javascript://undefined" data-copy="#domain-<?= $i ?>-info-<?= $info->code ?>" title="Copy <?= $info->title ?>">
+                                                                        <? foreach ($info->icons as $icon): ?>
+                                                                            <em class="fa fa-<?= $icon ?>"></em>
+                                                                        <? endforeach; ?>
+                                                                        <?= $info->name ?>
+                                                                        <code>
+                                                                            <?= $info->value ?>
+                                                                        </code>
                                                                     </a>
-                                                                <li>
+                                                                    <span class="input">
+                                                                        <input id="domain-<?= $i ?>-info-<?= $info->code ?>" value="<?= $info->valueReal ?>">
+                                                                    </span>
+                                                                </li>
                                                             <? endforeach; ?>
                                                         </ul>
                                                     </div>
@@ -450,22 +514,24 @@ natcasesort($TAGS);
                                                                 <em class="fa fa-fw fa-folder-o"></em> Symlink path
                                                             </a>
                                                         </li>
-                                                        <? if(!empty($domain->path['repo'])): ?>
-                                                        <li>
-                                                            <a href="javascript://undefined" data-copy="#domain-<?= $i ?>-repo" title="Copy repo path">
-                                                                <em class="fa fa-fw fa-code-fork"></em> Repo path
-                                                            </a>
-                                                        </li>
+                                                        <? if (!empty($domain->path['repo'])): ?>
+                                                            <li>
+                                                                <a href="javascript://undefined" data-copy="#domain-<?= $i ?>-repo" title="Copy repo path">
+                                                                    <em class="fa fa-fw fa-code-fork"></em> Repo path
+                                                                </a>
+                                                            </li>
                                                         <? endif; ?>
                                                     </ul>
                                                 </div>
                                             </div>
                                             <span class="input">
-                                                <input id="domain-<?= $i ?>-code" value="s <?= $domain->code ?>">
-                                                <input id="domain-<?= $i ?>-realpath" value="<?= $domain->path['real']?>">
-                                                <input id="domain-<?= $i ?>-symlink" value="<?= $domain->path['link']?>">
-                                                <? if(!empty($domain->path['repo'])): ?>
-                                                    <input id="domain-<?= $i ?>-repo" value="git clone <?= $domain->path['repo']?> .">
+                                                <? if (!empty($domain->code)): ?>
+                                                    <input id="domain-<?= $i ?>-code" value="s <?= $domain->code ?>">
+                                                <? endif; ?>
+                                                <input id="domain-<?= $i ?>-realpath" value="<?= $domain->path['real'] ?>">
+                                                <input id="domain-<?= $i ?>-symlink" value="<?= $domain->path['link'] ?>">
+                                                <? if (!empty($domain->path['repo'])): ?>
+                                                    <input id="domain-<?= $i ?>-repo" value="git clone <?= $domain->path['repo'] ?> .">
                                                 <? endif; ?>
                                             </span>
                                         </td>
@@ -522,7 +588,7 @@ task            =
                                         </h4>
                                     </div>
                                     <div class="modal-body">
-                                        Copy following code and paste into <code>/etc/hosts</code> file.
+                                        Copy following code and paste into <code>/etc/hosts</code> file at Your local machine.
                                         <div class="form-control" style="width: 100%;height: 400px; resize: none"><?= $_SERVER['SERVER_ADDR'] . "\t" . implode("\t", $HOSTS) ?></div>
                                     </div>
                                 </div>
@@ -540,52 +606,88 @@ task            =
             function tagFilter(tag) {
                 $('.bootstrap-table .search input').val(tag).trigger('drop');
             }
+            function createLoader() {
+                $('#main').addClass('loading');
+            }
+            function removeLoader() {
+                $('#main').removeClass('loading');
+            }
+            function searchOnPage(e) {
+                if (e.which > 32 && e.which < 128) {
+                    $('.bootstrap-table .search input').focus().val(String.fromCharCode(e.which));
+                    $(document).unbind('keyup.search');
+                }
+            }
             var tag = decodeURIComponent(window.location.hash.replace('#', '').trim());
             $(function () {
                 if (tag) {
-                    tagFilter(tag);
+                    setTimeout(function () {
+                        tagFilter(tag);
+                    }, 500);
+                } else {
+                    removeLoader();
                 }
-            });
-            $(document)
-                .on('click', 'a[data-copy]', function (e) {
-                    element = $(this).data('copy');
-                    $element = $(element);
-                    $element.focus().select();
-                    var msg, type;
-                    try {
-                        var successful = document.execCommand('copy');
-                        msg = (successful ? ('Copy data success: <b>' + $element.val() + '</b>') : 'Sorry, can\'t copy data.');
-                        type = successful ? 'success' : 'danger';
-                    } catch (err) {
-                        msg = 'Oops, unable to copy.';
-                        type = 'info';
-                    }
-                    $.bootstrapGrowl(msg, {
-                        type: type
-                    });
-                })
-                .on('click', '.tags a[data-value]', function () {
-                    var tag = $(this).data('value');
-                    tagFilter(tag);
-                })
-                .on('click', '.bootstrap-table .search .close', function () {
-                    tagFilter('');
-                })
-                .on('keyup drop', '.bootstrap-table .search input', function () {
-                    var tag = $(this).val().trim();
-                    $('li.active').removeClass('active');
-                    if (tag) {
-                        $('.tags li [data-value="' + tag + '"]').closest('.tags').closest('li').addClass('active');
-                        $('.tags li [data-value="' + tag + '"]').closest('li').addClass('active');
-                        window.location.hash = tag;
-                        if ($('.bootstrap-table .search .close').length === 0) {
-                            $('.bootstrap-table .search input').after($('<a>').addClass('fa fa-times close').attr('href', 'javascript://undefined'));
+                $(document)
+                    .on('click', 'a[data-copy]', function (e) {
+                        element = $(this).data('copy');
+                        $element = $(element);
+                        $element.focus().select();
+                        var msg, type;
+                        try {
+                            var successful = document.execCommand('copy');
+                            msg = (successful ? ('Copy data success: <b>' + $element.val() + '</b>') : 'Sorry, can\'t copy data.');
+                            type = successful ? 'success' : 'danger';
+                        } catch (err) {
+                            msg = 'Oops, unable to copy.';
+                            type = 'info';
                         }
-                    } else if (!tag) {
-                        window.location.hash = "";
-                        $('.bootstrap-table .search .close').remove();
-                    }
-                });
+                        $.bootstrapGrowl(msg, {
+                            type: type
+                        });
+                    })
+                    .on('click', 'a[data-tag]', function () {
+                        createLoader();
+                        var tag = $(this).data('tag');
+                        tagFilter(tag);
+                    })
+                    .on('click', '.bootstrap-table .search .close', function () {
+                        createLoader();
+                        tagFilter('');
+                    })
+                    .on('keyup.search', searchOnPage)
+                    .on('change', '.bootstrap-table .search input', function () {
+                        $(document).bind('keyup.search', searchOnPage);
+                    })
+                    .on('keyup drop', '.bootstrap-table .search input', function (e) {
+                        createLoader();
+                        if(e.which === 13){
+                            $('.bootstrap-table .search input').change();
+                        }else if(e.which === 27){
+                            tagFilter('');
+                        }else {
+                            var tag = $(this).val().trim();
+                            var $button = $('<a>').addClass('fa fa-times close').attr('href', 'javascript://undefined');
+                            $('nav li.active').removeClass('active');
+                            if (tag) {
+                                $('nav li [data-tag="' + tag + '"]').closest('ul').closest('li').addClass('active');
+                                $('nav li [data-tag="' + tag + '"]').closest('li').addClass('active');
+                                window.location.hash = tag;
+                                if ($('.bootstrap-table .search .close').length === 0) {
+                                    $('.bootstrap-table .search input').after($button);
+                                }
+                            } else if (!tag) {
+                                window.location.hash = "";
+                                $('.bootstrap-table .search .close').remove();
+                            }
+                        }
+                    }).on('sort.bs.table', function () {
+                        createLoader();
+                    }).on('pre-body.bs.table', function () {
+                        createLoader();
+                    }).on('post-body.bs.table', function () {
+                        removeLoader();
+                    });
+            });
         </script>
     </body>
 </html>
