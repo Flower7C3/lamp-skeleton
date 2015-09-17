@@ -1,0 +1,65 @@
+.bootstrap-table .search .close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+}
+
+.navbar .nav li.dropdown {
+    position: relative;
+}
+
+.navbar .nav li.dropdown .dropdown-menu {
+    max-height: calc(100vh - 50px);
+    overflow: auto;
+}
+
+a[data-copy] {
+    cursor: copy;
+}
+
+.input input {
+    position: absolute;
+    top: -10000px;
+}
+
+.tags a:not(:last-child):after {
+    content: ',';
+}
+
+.tags {
+    font-size: 0.8em;
+}
+
+.date {
+    font-size: 0.8em;
+    width: 100px;
+}
+
+.links {
+    width: 317px;
+}
+
+.fixed-table-body {
+    overflow: unset;
+}
+
+.loading {
+    background-image: url(loader.gif);
+    background-position: top center;
+    background-repeat: no-repeat;
+}
+
+.context-menu {
+    position: absolute;
+    display: none;
+    z-index: 9999;
+}
+.context-menu.visible {
+    display: block;
+}
+.context-menu .panel-heading {
+    padding: 5px;
+}
+.context-menu .list-group-item {
+    padding: 2px 5px;
+}

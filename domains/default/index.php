@@ -13,10 +13,8 @@ $jqueryVersion = '2.1.4';
 /**
  * read directories
  */
-
 $idf = new \IntlDateFormatter(\Locale::getDefault(), \IntlDateFormatter::SHORT, \IntlDateFormatter::SHORT);
 $dh = opendir($dir);
-//die('asd');
 $filenames = [];
 $CLIENTS = [];
 $TAGS = [];
@@ -71,8 +69,6 @@ while (false !== ($filename = readdir($dh))) {
         $data['date'] = new \DateTime('@' . $mtime);
         $data['current'] = ($data['date']->diff(new \DateTime())->days > 7) ? false : true;
 
-        $CLIENTS[] = $data['client_id'];
-
         # local and live URLs
         $data['url'] = 'http://' . $localDomain . $baseurl;
         if (preg_match("'\.'", $externalDomain)) {
@@ -121,48 +117,27 @@ while (false !== ($filename = readdir($dh))) {
                     $data['repoUrl'] = $config['tools']['repo'];
                     unset($config['tools']['repo']);
                 }
+                if (isset($config['client_id'])) {
+                    $data['client_id'] = $config['client_id'];
+                }
+                if (isset($config['job_id'])) {
+                    $data['job_id'] = $config['job_id'];
+                }
                 if (isset($config['code'])) {
                     $data['code'] = $config['code'];
                 }
-                if (isset($config['tools'])) {
+                if (!empty($config['tools'])) {
                     foreach ($config['tools'] as $key => $url) {
-                        if (isset($toolList[$key])) {
-                            $data['tools'][$key] = clone $toolList[$key];
-                        } else {
-                            $data['tools'][$key] = (object)array(
-                                'title' => $key,
-                                'name' => $key,
-                            );
-                        }
-                        $data['tools'][$key]->url = $url;
+                        $data['tools'][$key] = toolMenu($key, $url);
                     }
                     ksort($data['tools']);
                 }
-                if (isset($config['info'])) {
-                    foreach ($config['info'] as $key => $valReal) {
-                        $temp = (object)array(
-                            'title' => $key,
-                            'code' => md5($key),
-                            'name' => $key,
-                            'value' => $valReal,
-                            'valueReal' => $valReal,
-                            'icons' => array(),
-                        );
-                        if (preg_match("'ssh'", $key)) {
-                            $temp->icons[] = 'terminal';
-                            $temp->name = preg_replace("'ssh'", '', $temp->name);
-                        }
-                        if (preg_match("'sql'", $key)) {
-                            $temp->icons[] = 'database';
-                            $temp->name = preg_replace("'sql'", '', $temp->name);
-                        }
-                        if (preg_match("'pass'", $key)) {
-                            $temp->value = '***';
-                        }
-                        $data['info'][$key] = $temp;
+                if (!empty($config['info'])) {
+                    foreach ($config['info'] as $key => $val) {
+                        $data['info'][$key] = infoMenu($key, $val);
                     }
                 }
-                if (isset($config['tags'])) {
+                if (!empty($config['tags'])) {
                     $data['tags'] = explode(',', $config['tags']);
                     $TAGS = array_merge($TAGS, $data['tags']);
                 }
@@ -182,6 +157,7 @@ while (false !== ($filename = readdir($dh))) {
         $data['path']['real'] = $realPath;
         $data['path']['link'] = $symlinkPath;
 
+        $CLIENTS[] = $data['client_id'];
 
         $DOMAINS[] = (object)$data;
 
@@ -196,6 +172,7 @@ natcasesort($CLIENTS);
 
 $TAGS = array_unique($TAGS);
 natcasesort($TAGS);
+
 ?>
 <!DOCTYPE html>
 <html>
@@ -206,58 +183,7 @@ natcasesort($TAGS);
         <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/<?= $bootstrapVersion ?>/css/bootstrap-theme.min.css">
         <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.8.1/bootstrap-table.min.css">
         <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/font-awesome/<?= $fontawesomeVersion ?>/css/font-awesome.min.css">
-        <style type="text/css">
-            .bootstrap-table .search .close {
-                position: absolute;
-                top: 10px;
-                right: 10px;
-            }
-
-            .navbar .nav li.dropdown {
-                position: relative;
-            }
-
-            .navbar .nav li.dropdown .dropdown-menu {
-                max-height: calc(100vh - 50px);
-                overflow: auto;
-            }
-
-            a[data-copy] {
-                cursor: copy;
-            }
-
-            .input input {
-                position: absolute;
-                top: -10000px;
-            }
-
-            .tags a:not(:last-child):after {
-                content: ',';
-            }
-
-            .tags {
-                font-size: 0.8em;
-            }
-
-            .date {
-                font-size: 0.8em;
-                width: 100px;
-            }
-
-            .links {
-                width: 317px;
-            }
-
-            .fixed-table-body {
-                overflow: unset;
-            }
-
-            .loading {
-                background-image: url(img/220.GIF);
-                background-position: top center;
-                background-repeat: no-repeat;
-            }
-        </style>
+        <link rel="stylesheet" href="dist/main.css">
     </head>
     <body>
         <nav class="navbar navbar-default">
@@ -391,7 +317,7 @@ natcasesort($TAGS);
                             </thead>
                             <tbody>
                                 <? foreach ($DOMAINS as $i => $domain): ?>
-                                    <tr id="tr-id-<?= $i ?>" class="tr-class-<?= $i ?>">
+                                    <tr id="tr-id-<?= $i ?>" class="tr-class-<?= $i ?>" data-id="<?= $i ?>">
                                         <td class="<?= $domain->current ? 'lead' : '' ?>">
                                             <a href="<?= $domain->url ?>">
                                                 <?= $domain->name ?>
@@ -424,270 +350,158 @@ natcasesort($TAGS);
                                         </td>
                                         <td>
                                             <div class="btn-group links">
-                                                <a class="btn btn-primary btn-xs" href="<?= $domain->url ?>" title="Local development page">
-                                                    <em class="fa fa-fw fa-code"></em>
-                                                </a>
-                                                <? if (!empty($domain->devUrl)): ?>
-                                                    <a class="btn btn-warning btn-xs" href="<?= $domain->devUrl ?>" title="Development page">
-                                                        <em class="fa fa-globe"> Dev</em>
-                                                    </a>
-                                                <? endif; ?>
-                                                <? if (!empty($domain->stageUrl)): ?>
-                                                    <a class="btn btn-warning btn-xs" href="<?= $domain->stageUrl ?>" title="Stage page">
-                                                        <em class="fa fa-globe"> Stage</em>
-                                                    </a>
-                                                <? endif; ?>
-                                                <? if (!empty($domain->liveUrl)): ?>
-                                                    <a class="btn btn-success btn-xs" href="<?= $domain->liveUrl ?>" title="Live page">
-                                                        <em class="fa fa-globe"> Live</em>
-                                                    </a>
-                                                <? endif; ?>
+                                                <?= generateLink($domain->url, ['class' => "btn btn-primary btn-xs", 'title' => "Local development page",], ['code']) ?>
+                                                <?= generateLink($domain->devUrl, ['class' => "btn btn-warning btn-xs", 'title' => "Development page",], ['globe'], 'Dev') ?>
+                                                <?= generateLink($domain->stageUrl, ['class' => "btn btn-warning btn-xs", 'title' => "Stage page",], ['globe'], 'Stage') ?>
+                                                <?= generateLink($domain->liveUrl, ['class' => "btn btn-warning btn-xs", 'title' => "Live page",], ['globe'], 'Live') ?>
                                                 <? if (!empty($domain->tools) || !empty($domain->repoUrl)): ?>
                                                     <div class="btn-group" role="group">
-                                                        <a href="javascript://undefined" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" title="External tools">
-                                                            <em class="fa fa-wrench"> Tools</em>
-                                                        </a>
+                                                        <?= generateLink('dropdown', ['title' => "External tools", 'class' => "btn btn-default btn-xs",], ['wrench'], 'Tools') ?>
                                                         <ul class="dropdown-menu">
-                                                            <? if (!empty($domain->repoUrl)): ?>
-                                                                <li>
-                                                                    <a href="<?= $domain->repoUrl ?>" title="GIT repository">
-                                                                        <em class="fa fa-fw fa-code-fork"></em>
-                                                                        GIT
-                                                                    </a>
-                                                                </li>
-                                                            <? endif; ?>
+                                                            <?= generateListLink($domain->repoUrl, ['title' => "GIT repository",], ['code-fork'], 'GIT') ?>
                                                             <? foreach ($domain->tools as $tool): ?>
-                                                            <li>
-                                                                <a href="<?= $tool->url ?>" title="<?= $tool->title ?>">
-                                                                    <? if (!empty($tool->icon)): ?>
-                                                                        <em class="fa fa-fw fa-<?= $tool->icon ?>"></em>
-                                                                    <? endif; ?>
-                                                                    <?= $tool->name ?>
-                                                                </a>
-                                                            <li>
-                                                                <? endforeach; ?>
+                                                                <?= generateListLink($tool->url, ['title' => $tool->title], $tool->icons, $tool->name) ?>
+                                                            <? endforeach; ?>
                                                         </ul>
                                                     </div>
                                                 <? endif; ?>
                                                 <? if (!empty($domain->info)): ?>
                                                     <div class="btn-group" role="group">
-                                                        <a href="javascript://undefined" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" title="Infos">
-                                                            <em class="fa fa-info-circle"> Info</em>
-                                                        </a>
+                                                        <?= generateLink('dropdown', ['title' => "Domain info", 'class' => "btn btn-default btn-xs",], ['info-circle'], 'Info') ?>
                                                         <ul class="dropdown-menu">
                                                             <? foreach ($domain->info as $info): ?>
-                                                                <li>
-                                                                    <a href="javascript://undefined" data-copy="#domain-<?= $i ?>-info-<?= $info->code ?>" title="Copy <?= $info->title ?>">
-                                                                        <? foreach ($info->icons as $icon): ?>
-                                                                            <em class="fa fa-<?= $icon ?>"></em>
-                                                                        <? endforeach; ?>
-                                                                        <?= $info->name ?>
-                                                                        <code>
-                                                                            <?= $info->value ?>
-                                                                        </code>
-                                                                    </a>
-                                                                    <span class="input">
-                                                                        <input id="domain-<?= $i ?>-info-<?= $info->code ?>" value="<?= $info->valueReal ?>">
-                                                                    </span>
-                                                                </li>
+                                                                <?= generateListLink("javascript://undefined", ['title' => 'Copy ' . $info->title, 'data-copy' => '#domain-' . $i . '-info-' . $info->code . ''], $info->icons, $info->name . ' <code>' . $info->value . '</code>') ?>
                                                             <? endforeach; ?>
                                                         </ul>
                                                     </div>
                                                 <? endif; ?>
                                                 <div class="btn-group" role="group">
-                                                    <a href="javascript://undefined" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" title="External tools">
-                                                        <em class="fa fa-copy"> Copy</em>
-                                                    </a>
+                                                    <?= generateLink('dropdown', ['title' => "Copy variables", 'class' => "btn btn-default btn-xs",], ['copy'], 'Copy') ?>
                                                     <ul class="dropdown-menu">
-                                                        <li>
-                                                            <a href="javascript://undefined" data-copy="#domain-<?= $i ?>-code" title="Copy project code">
-                                                                <em class="fa fa-fw fa-barcode"></em> Code
-                                                            </a>
-                                                        </li>
-                                                        <li>
-                                                            <a href="javascript://undefined" data-copy="#domain-<?= $i ?>-realpath" title="Copy real path">
-                                                                <em class="fa fa-fw fa-folder"></em> Real path
-                                                            </a>
-                                                        </li>
-                                                        <li>
-                                                            <a href="javascript://undefined" data-copy="#domain-<?= $i ?>-symlink" title="Copy symlink path">
-                                                                <em class="fa fa-fw fa-folder-o"></em> Symlink path
-                                                            </a>
-                                                        </li>
+                                                        <?= generateListLink("javascript://undefined", ['title' => 'Copy project code', 'data-copy' => '#domain-' . $i . '-code'], ['barcode'], 'Code') ?>
+                                                        <?= generateListLink("javascript://undefined", ['title' => 'Copy real path', 'data-copy' => '#domain-' . $i . '-realpath'], ['folder'], 'Real path') ?>
+                                                        <?= generateListLink("javascript://undefined", ['title' => 'Copy symlink path', 'data-copy' => '#domain-' . $i . '-symlink'], ['folder-o'], 'Symlink path') ?>
                                                         <? if (!empty($domain->path['repo'])): ?>
-                                                            <li>
-                                                                <a href="javascript://undefined" data-copy="#domain-<?= $i ?>-repo" title="Copy repo path">
-                                                                    <em class="fa fa-fw fa-code-fork"></em> Repo path
-                                                                </a>
-                                                            </li>
+                                                            <?= generateListLink("javascript://undefined", ['title' => 'Copy repo path', 'data-copy' => '#domain-' . $i . '-repo'], ['code-fork'], 'Repo path') ?>
                                                         <? endif; ?>
                                                     </ul>
                                                 </div>
                                             </div>
-                                            <span class="input">
-                                                <? if (!empty($domain->code)): ?>
-                                                    <input id="domain-<?= $i ?>-code" value="s <?= $domain->code ?>">
-                                                <? endif; ?>
-                                                <input id="domain-<?= $i ?>-realpath" value="<?= $domain->path['real'] ?>">
-                                                <input id="domain-<?= $i ?>-symlink" value="<?= $domain->path['link'] ?>">
-                                                <? if (!empty($domain->path['repo'])): ?>
-                                                    <input id="domain-<?= $i ?>-repo" value="git clone <?= $domain->path['repo'] ?> .">
-                                                <? endif; ?>
-                                            </span>
                                         </td>
                                     </tr>
                                 <? endforeach ?>
                             </tbody>
                         </table>
-                        <div class="modal fade" id="howto">
-                            <div class="modal-dialog">
-                                <div class="modal-content">
-                                    <div class="modal-header">
-                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                                        <h4 class="modal-title">
-                                            <em class="fa fa-fw fa-info-circle"></em>
-                                            Howto
-                                        </h4>
-                                    </div>
-                                    <div class="modal-body">
-                                        <ul type="1">
-                                            <li>Create project or clone project git repo in <code>./projects/</code> directory, eg: <code>./projects/{PROJECT_ID}/www/</code>.</li>
-                                            <li>Add project to <code>./symlinks.sh</code> script and run it, eg: <code>[example.com]=000_example/www</code>.</li>
-                                            <li>Create <code>DESCRIPTION</code> file in <code>./projects/{PROJECT_ID}/</code> directory with config options (buttons links):
-                                                <pre>
-code            =   project code
-tags            =   tag1,tag2,tag3
-
-[domains]
-local           =   
-dev             =   
-stage           =   
-prod            =   
-
-[tools]
-repo            =   
-pma             =   
-crm             =   
-task            =   
-                                                </pre>
-                                            </li>
-                                            <li>Reload this page, click <em class="fa fa-cog"> Hosts config</em> button, copy data and paste to Your local <code>/etc/hosts</code> file.</li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="modal fade" id="hostsConfig">
-                            <div class="modal-dialog modal-lg">
-                                <div class="modal-content">
-                                    <div class="modal-header">
-                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                                        <h4 class="modal-title">
-                                            <em class="fa fa-fw fa-cog"></em>
-                                            Hosts config
-                                        </h4>
-                                    </div>
-                                    <div class="modal-body">
-                                        Copy following code and paste into <code>/etc/hosts</code> file at Your local machine.
-                                        <div class="form-control" style="width: 100%;height: 400px; resize: none"><?= $_SERVER['SERVER_ADDR'] . "\t" . implode("\t", $HOSTS) ?></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
                     <? endif; ?>
                 </div>
             </div>
         </section>
+        <? if (!empty($DOMAINS)): ?>
+            <? foreach ($DOMAINS as $i => $domain): ?>
+            <!--Context menu <?= $i ?>-->
+                <div class="context-menu" id="context-menu-id-<?= $i ?>">
+                    <div class="panel panel-default">
+                        <div class="panel-heading">
+                            <h3 class="panel-title"><?= $domain->name ?></h3>
+                        </div>
+                        <div class="list-group">
+                            <?= generateLink($domain->url, ['class' => "list-group-item", 'title' => "Local development page",], ['code'], 'Local') ?>
+                            <?= generateLink($domain->devUrl, ['class' => "list-group-item", 'title' => "Development page",], ['globe'], 'Dev') ?>
+                            <?= generateLink($domain->stageUrl, ['class' => "list-group-item", 'title' => "Stage page",], ['globe'], 'Stage') ?>
+                            <?= generateLink($domain->liveUrl, ['class' => "list-group-item", 'title' => "Live page",], ['globe'], 'Live') ?>
+                        </div>
+                        <? if (!empty($domain->tools) || !empty($domain->repoUrl)): ?>
+                            <div class="panel-heading">
+                                <em class="fa fa-fw fa-wrench"></em>
+                                Tools
+                            </div>
+                            <div class="list-group">
+                                <?= generateLink($domain->repoUrl, ['class' => "list-group-item", 'title' => "GIT repository",], ['code-fork'], 'GIT') ?>
+                                <? foreach ($domain->tools as $tool): ?>
+                                    <?= generateLink($tool->url, ['class' => "list-group-item", 'title' => $tool->title], $tool->icons, $tool->name) ?>
+                                <? endforeach; ?>
+                            </div>
+                        <? endif; ?>
+                        <? if (!empty($domain->info)): ?>
+                            <div class="panel-heading">
+                                <em class="fa fa-fw fa-info-circle"></em>
+                                Info
+                            </div>
+                            <div class="list-group">
+                                <? foreach ($domain->info as $info): ?>
+                                    <?= generateLink("javascript://undefined", ['class' => "list-group-item", 'title' => 'Copy ' . $info->title, 'data-copy' => '#domain-' . $i . '-info-' . $info->code . ''], $info->icons, $info->name . ' <code>' . $info->value . '</code>') ?>
+                                <? endforeach; ?>
+                            </div>
+                        <? endif; ?>
+                    </div>
+                </div>
+                <!--Copy input <?= $i ?>-->
+                <span class="input">
+                    <? if (!empty($domain->code)): ?>
+                        <input id="domain-<?= $i ?>-code" value="s <?= $domain->code ?>">
+                    <? endif; ?>
+                    <input id="domain-<?= $i ?>-realpath" value="<?= $domain->path['real'] ?>">
+                    <input id="domain-<?= $i ?>-symlink" value="<?= $domain->path['link'] ?>">
+                    <? if (!empty($domain->path['repo'])): ?>
+                        <input id="domain-<?= $i ?>-repo" value="git clone <?= $domain->path['repo'] ?> .">
+                    <? endif; ?>
+                    <? foreach ($domain->tools as $tool): ?>
+                        <input id="domain-<?= $i ?>-tool-<?= $tool->code ?>" value="<?= $tool->url ?>">
+                    <? endforeach; ?>
+                    <? if (!empty($domain->info)): ?>
+                        <? foreach ($domain->info as $info): ?>
+                            <input id="domain-<?= $i ?>-info-<?= $info->code ?>" value="<?= $info->valueReal ?>">
+                        <? endforeach; ?>
+                    <? endif; ?>
+                </span>
+            <? endforeach; ?>
+            <!--Modal howto-->
+            <div class="modal fade" id="howto">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                            <h4 class="modal-title">
+                                <em class="fa fa-fw fa-info-circle"></em>
+                                Howto
+                            </h4>
+                        </div>
+                        <div class="modal-body">
+                            <ul type="1">
+                                <li>Create project or clone project git repo in <code>./projects/</code> directory, eg: <code>./projects/{PROJECT_ID}/www/</code>.</li>
+                                <li>Add project to <code>./symlinks.sh</code> script and run it, eg: <code>[example.com]=000_example/www</code>.</li>
+                                <li>Create <code>DESCRIPTION</code> file in <code>./projects/{PROJECT_ID}/</code> directory with config options (buttons links):
+                                    <pre><?= file_get_contents('DEFAULT.ini') ?></pre>
+                                </li>
+                                <li>Reload this page, click <em class="fa fa-cog"> Hosts config</em> button, copy data and paste to Your local <code>/etc/hosts</code> file.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!--Modal hostsConfig-->
+            <div class="modal fade" id="hostsConfig">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                            <h4 class="modal-title">
+                                <em class="fa fa-fw fa-cog"></em>
+                                Hosts config
+                            </h4>
+                        </div>
+                        <div class="modal-body">
+                            Copy following code and paste into <code>/etc/hosts</code> file at Your local machine.
+                            <div class="form-control" style="width: 100%;height: 400px; resize: none"><?= $_SERVER['SERVER_ADDR'] . "\t" . implode("\t", $HOSTS) ?></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        <? endif; ?>
         <script src="//code.jquery.com/jquery-<?= $jqueryVersion ?>.min.js"></script>
         <script src="//maxcdn.bootstrapcdn.com/bootstrap/<?= $bootstrapVersion ?>/js/bootstrap.min.js"></script>
         <script src="//cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.8.1/bootstrap-table.min.js"></script>
         <script src="//cdnjs.cloudflare.com/ajax/libs/bootstrap-growl/1.0.0/jquery.bootstrap-growl.min.js"></script>
-        <script type="text/javascript">
-            function tagFilter(tag) {
-                $('.bootstrap-table .search input').val(tag).trigger('drop');
-            }
-            function createLoader() {
-                $('#main').addClass('loading');
-            }
-            function removeLoader() {
-                $('#main').removeClass('loading');
-            }
-            function searchOnPage(e) {
-                if (e.which > 32 && e.which < 128) {
-                    $('.bootstrap-table .search input').focus().val(String.fromCharCode(e.which));
-                    $(document).unbind('keyup.search');
-                }
-            }
-            var tag = decodeURIComponent(window.location.hash.replace('#', '').trim());
-            $(function () {
-                if (tag) {
-                    setTimeout(function () {
-                        tagFilter(tag);
-                    }, 500);
-                } else {
-                    removeLoader();
-                }
-                $(document)
-                    .on('click', 'a[data-copy]', function (e) {
-                        element = $(this).data('copy');
-                        $element = $(element);
-                        $element.focus().select();
-                        var msg, type;
-                        try {
-                            var successful = document.execCommand('copy');
-                            msg = (successful ? ('Copy data success: <b>' + $element.val() + '</b>') : 'Sorry, can\'t copy data.');
-                            type = successful ? 'success' : 'danger';
-                        } catch (err) {
-                            msg = 'Oops, unable to copy.';
-                            type = 'info';
-                        }
-                        $.bootstrapGrowl(msg, {
-                            type: type
-                        });
-                    })
-                    .on('click', 'a[data-tag]', function () {
-                        createLoader();
-                        var tag = $(this).data('tag');
-                        tagFilter(tag);
-                    })
-                    .on('click', '.bootstrap-table .search .close', function () {
-                        createLoader();
-                        tagFilter('');
-                    })
-                    .on('keyup.search', searchOnPage)
-                    .on('change', '.bootstrap-table .search input', function () {
-                        $(document).bind('keyup.search', searchOnPage);
-                    })
-                    .on('keyup drop', '.bootstrap-table .search input', function (e) {
-                        createLoader();
-                        if(e.which === 13){
-                            $('.bootstrap-table .search input').change();
-                        }else if(e.which === 27){
-                            tagFilter('');
-                        }else {
-                            var tag = $(this).val().trim();
-                            var $button = $('<a>').addClass('fa fa-times close').attr('href', 'javascript://undefined');
-                            $('nav li.active').removeClass('active');
-                            if (tag) {
-                                $('nav li [data-tag="' + tag + '"]').closest('ul').closest('li').addClass('active');
-                                $('nav li [data-tag="' + tag + '"]').closest('li').addClass('active');
-                                window.location.hash = tag;
-                                if ($('.bootstrap-table .search .close').length === 0) {
-                                    $('.bootstrap-table .search input').after($button);
-                                }
-                            } else if (!tag) {
-                                window.location.hash = "";
-                                $('.bootstrap-table .search .close').remove();
-                            }
-                        }
-                    }).on('sort.bs.table', function () {
-                        createLoader();
-                    }).on('pre-body.bs.table', function () {
-                        createLoader();
-                    }).on('post-body.bs.table', function () {
-                        removeLoader();
-                    });
-            });
-        </script>
+        <script src="dist/main.js"></script>
     </body>
 </html>
