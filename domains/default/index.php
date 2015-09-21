@@ -250,17 +250,17 @@ natcasesort($TAGS);
                         </ul>
                     <? endif; ?>
                     <ul class="nav navbar-nav navbar-right">
-                        <? if (!empty($phpMyAdminURL)): ?>
+                        <? foreach ($TOOLS as $key => $url): ?>
                             <li>
-                                <a href="<?= $phpMyAdminURL ?>" title="phpMyAdmin">
-                                    <em class="fa fa-fw fa-database"></em>
-                                        <span class="hidden-sm hidden-md hidden-lg">
-                                            phpMyAdmin
-                                            <small class="fa fa-external-link"></small>
-                                        </span>
+                                <a href="<?= $url ?>" title="<?= isset($toolList[$key]) ? $toolList[$key]->title : $key ?>">
+                                    <em class="fa fa-fw fa-<?= isset($toolList[$key]) ? $toolList[$key]->icons[0] : 'square' ?>"></em>
+                                    <span class="hidden-sm hidden-md hidden-lg">
+                                            <?= isset($toolList[$key]) ? $toolList[$key]->name : $key ?>
+                                        <small class="fa fa-external-link"></small>
+                                </span>
                                 </a>
                             </li>
-                        <? endif; ?>
+                        <? endforeach; ?>
                         <li>
                             <a data-toggle="modal" href="#howto" title="Howto info">
                                 <span class="fa fa-fw fa-info-circle"></span>
@@ -345,9 +345,9 @@ natcasesort($TAGS);
                                                     <? endforeach; ?>
                                                 <? endif; ?>
                                             </span>
-                                                <? if ($domain->current): ?>
-                                                    <a data-tag="latest" href="javascript://undefined"></a>
-                                                <? endif; ?>
+                                            <? if ($domain->current): ?>
+                                                <a data-tag="latest" href="javascript://undefined"></a>
+                                            <? endif; ?>
                                         </td>
                                         <td class="date">
                                             <div class="date">

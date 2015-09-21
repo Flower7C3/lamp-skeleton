@@ -4,12 +4,15 @@ ini_set('display_errors', true);
 
 \Locale::setDefault('pl_PL');
 
-$phpMyAdminURL = 'http://192.168.33.99/phpmyadmin/';
 $suffix = "\.(dev|local)";
 $dir = "/vagrant/domains/";
 $itemsPerPage = 10;
 $clientNames = [
 //    'key' => 'name',
+];
+$TOOLS = [
+    'pma' => 'http://192.168.33.99/phpmyadmin/',
+    'example' => 'http://tool.example.com/',
 ];
 $tagIcons = [
     'evolution' => 'plus-square-o',
@@ -48,7 +51,7 @@ $filesAsTags = [
 ];
 $toolList = [
     'repo' => (object)[
-        'icons' => ['fork'],
+        'icons' => ['code-fork'],
         'title' => 'Repository manager',
         'name' => 'GIT',
     ],
