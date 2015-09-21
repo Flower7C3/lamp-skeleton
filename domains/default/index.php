@@ -241,6 +241,12 @@ natcasesort($TAGS);
                                     </ul>
                                 </li>
                             <? endif; ?>
+                            <li>
+                                <a data-tag="latest" href="javascript://undefined">
+                                    <em class="fa fa-fw fa-clock-o"></em>
+                                    Latest
+                                </a>
+                            </li>
                         </ul>
                     <? endif; ?>
                     <ul class="nav navbar-nav navbar-right">
@@ -329,11 +335,9 @@ natcasesort($TAGS);
                                                     <a data-copy="#domain-<?= $i ?>-code" href="javascript://undefined">[<?= $domain->code ?>]</a>
                                                 <? endif; ?>
                                                 <? if (!empty($domain->client_id) && !empty($domain->job_id)): ?>
-                                                    <? if (isset($clientNames[$domain->client_id])): ?>
-                                                        <a data-tag="<?= $domain->client_id ?>" href="javascript://undefined"><strong><?= $clientNames[$domain->client_id] ?></strong> (#<?= $domain->job_id ?>)</a>
-                                                    <? else: ?>
-                                                        <a data-tag="<?= $domain->client_id ?>" href="javascript://undefined"></a>
-                                                    <? endif; ?>
+                                                    <a data-tag="<?= $domain->client_id ?>" href="javascript://undefined"><strong><?= $clientNames[$domain->client_id] ?></strong> (#<?= $domain->job_id ?>)</a>
+                                                <? elseif (isset($clientNames[$domain->client_id])): ?>
+                                                    <a data-tag="<?= $domain->client_id ?>" href="javascript://undefined"><strong><?= $clientNames[$domain->client_id] ?></strong> (#<?= $domain->client_id ?>)</a>
                                                 <? endif; ?>
                                                 <? if (!empty($domain->tags)): ?>
                                                     <? foreach ($domain->tags as $tag): ?>
@@ -341,22 +345,30 @@ natcasesort($TAGS);
                                                     <? endforeach; ?>
                                                 <? endif; ?>
                                             </span>
+                                                <? if ($domain->current): ?>
+                                                    <a data-tag="latest" href="javascript://undefined"></a>
+                                                <? endif; ?>
                                         </td>
-                                        <td>
+                                        <td class="date">
                                             <div class="date">
                                                 <span class="hidden"><?= $domain->date->format('Y-m-d H:i:s') ?></span>
                                                 <?= $idf->format($domain->date) ?>
                                             </div>
                                         </td>
-                                        <td>
-                                            <div class="btn-group links">
-                                                <?= generateLink($domain->url, ['class' => "btn btn-primary btn-xs", 'title' => "Local development page",], ['code']) ?>
-                                                <?= generateLink($domain->devUrl, ['class' => "btn btn-warning btn-xs", 'title' => "Development page",], ['globe'], 'Dev') ?>
-                                                <?= generateLink($domain->stageUrl, ['class' => "btn btn-warning btn-xs", 'title' => "Stage page",], ['globe'], 'Stage') ?>
-                                                <?= generateLink($domain->liveUrl, ['class' => "btn btn-warning btn-xs", 'title' => "Live page",], ['globe'], 'Live') ?>
+                                        <td class="links">
+                                            <div class="btn-group pull-right links">
+                                                <div class="btn-group" role="group">
+                                                    <?= generateLink('dropdown', ['title' => "Domains", 'class' => "btn btn-default btn-xs",], ['globe']) ?>
+                                                    <ul class="dropdown-menu">
+                                                        <?= generateListLink($domain->url, ['title' => "Local development page",], ['code'], 'Local') ?>
+                                                        <?= generateListLink($domain->devUrl, ['title' => "Development page",], ['globe'], 'Dev') ?>
+                                                        <?= generateListLink($domain->stageUrl, ['title' => "Stage page",], ['globe'], 'Stage') ?>
+                                                        <?= generateListLink($domain->liveUrl, ['title' => "Live page",], ['globe'], 'Live') ?>
+                                                    </ul>
+                                                </div>
                                                 <? if (!empty($domain->tools) || !empty($domain->repoUrl)): ?>
                                                     <div class="btn-group" role="group">
-                                                        <?= generateLink('dropdown', ['title' => "External tools", 'class' => "btn btn-default btn-xs",], ['wrench'], 'Tools') ?>
+                                                        <?= generateLink('dropdown', ['title' => "External tools", 'class' => "btn btn-default btn-xs",], ['wrench']) ?>
                                                         <ul class="dropdown-menu">
                                                             <?= generateListLink($domain->repoUrl, ['title' => "GIT repository",], ['code-fork'], 'GIT') ?>
                                                             <? foreach ($domain->tools as $tool): ?>
@@ -367,7 +379,7 @@ natcasesort($TAGS);
                                                 <? endif; ?>
                                                 <? if (!empty($domain->info)): ?>
                                                     <div class="btn-group" role="group">
-                                                        <?= generateLink('dropdown', ['title' => "Domain info", 'class' => "btn btn-default btn-xs",], ['info-circle'], 'Info') ?>
+                                                        <?= generateLink('dropdown', ['title' => "Domain info", 'class' => "btn btn-default btn-xs",], ['info-circle']) ?>
                                                         <ul class="dropdown-menu">
                                                             <? foreach ($domain->info as $info): ?>
                                                                 <?= generateListLink("javascript://undefined", ['title' => 'Copy ' . $info->title, 'data-copy' => '#domain-' . $i . '-info-' . $info->code . ''], $info->icons, $info->name . ' <code>' . $info->value . '</code>') ?>
@@ -376,7 +388,7 @@ natcasesort($TAGS);
                                                     </div>
                                                 <? endif; ?>
                                                 <div class="btn-group" role="group">
-                                                    <?= generateLink('dropdown', ['title' => "Copy variables", 'class' => "btn btn-default btn-xs",], ['copy'], 'Copy') ?>
+                                                    <?= generateLink('dropdown', ['title' => "Copy variables", 'class' => "btn btn-default btn-xs",], ['copy']) ?>
                                                     <ul class="dropdown-menu">
                                                         <?= generateListLink("javascript://undefined", ['title' => 'Copy project code', 'data-copy' => '#domain-' . $i . '-code'], ['barcode'], 'Code') ?>
                                                         <?= generateListLink("javascript://undefined", ['title' => 'Copy real path', 'data-copy' => '#domain-' . $i . '-realpath'], ['folder'], 'Real path') ?>
@@ -398,42 +410,42 @@ natcasesort($TAGS);
         </section>
         <? if (!empty($DOMAINS)): ?>
             <? foreach ($DOMAINS as $i => $domain): ?>
-            <!--Context menu <?= $i ?>-->
-                <div class="context-menu" id="context-menu-id-<?= $i ?>">
-                    <div class="panel panel-default">
-                        <div class="panel-heading">
-                            <h3 class="panel-title"><?= $domain->name ?></h3>
-                        </div>
-                        <div class="list-group">
-                            <?= generateLink($domain->url, ['class' => "list-group-item", 'title' => "Local development page",], ['code'], 'Local') ?>
-                            <?= generateLink($domain->devUrl, ['class' => "list-group-item", 'title' => "Development page",], ['globe'], 'Dev') ?>
-                            <?= generateLink($domain->stageUrl, ['class' => "list-group-item", 'title' => "Stage page",], ['globe'], 'Stage') ?>
-                            <?= generateLink($domain->liveUrl, ['class' => "list-group-item", 'title' => "Live page",], ['globe'], 'Live') ?>
-                        </div>
+                <!--Context menu <?= $i ?>-->
+                <div class="context-menu dropdown open" id="context-menu-id-<?= $i ?>">
+                    <button class="btn btn-default dropdown-toggle" disabled>
+                        <?= $domain->name ?>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li class="dropdown-header">
+                            <em class="fa fa-fw fa-globe"></em>
+                            Domains
+                        </li>
+                        <?= generateListLink($domain->url, ['title' => "Local development page",], ['code'], 'Local') ?>
+                        <?= generateListLink($domain->devUrl, ['title' => "Development page",], ['globe'], 'Dev') ?>
+                        <?= generateListLink($domain->stageUrl, ['title' => "Stage page",], ['globe'], 'Stage') ?>
+                        <?= generateListLink($domain->liveUrl, ['title' => "Live page",], ['globe'], 'Live') ?>
                         <? if (!empty($domain->tools) || !empty($domain->repoUrl)): ?>
-                            <div class="panel-heading">
+                            <li role="separator" class="divider"></li>
+                            <li class="dropdown-header">
                                 <em class="fa fa-fw fa-wrench"></em>
                                 Tools
-                            </div>
-                            <div class="list-group">
-                                <?= generateLink($domain->repoUrl, ['class' => "list-group-item", 'title' => "GIT repository",], ['code-fork'], 'GIT') ?>
-                                <? foreach ($domain->tools as $tool): ?>
-                                    <?= generateLink($tool->url, ['class' => "list-group-item", 'title' => $tool->title], $tool->icons, $tool->name) ?>
-                                <? endforeach; ?>
-                            </div>
+                            </li>
+                            <?= generateListLink($domain->repoUrl, ['title' => "GIT repository",], ['code-fork'], 'GIT') ?>
+                            <? foreach ($domain->tools as $tool): ?>
+                                <?= generateListLink($tool->url, ['title' => $tool->title], $tool->icons, $tool->name) ?>
+                            <? endforeach; ?>
                         <? endif; ?>
                         <? if (!empty($domain->info)): ?>
-                            <div class="panel-heading">
-                                <em class="fa fa-fw fa-info-circle"></em>
-                                Info
-                            </div>
-                            <div class="list-group">
-                                <? foreach ($domain->info as $info): ?>
-                                    <?= generateLink("javascript://undefined", ['class' => "list-group-item", 'title' => 'Copy ' . $info->title, 'data-copy' => '#domain-' . $i . '-info-' . $info->code . ''], $info->icons, $info->name . ' <code>' . $info->value . '</code>') ?>
-                                <? endforeach; ?>
-                            </div>
-                        <? endif; ?>
-                    </div>
+                        <li role="separator" class="divider"></li>
+                        <li class="dropdown-header">
+                            <em class="fa fa-fw fa-info-circle"></em>
+                            Info
+                            <? foreach ($domain->info as $info): ?>
+                                <?= generateListLink("javascript://undefined", ['title' => 'Copy ' . $info->title, 'data-copy' => '#domain-' . $i . '-info-' . $info->code . ''], $info->icons, $info->name . ' <code>' . $info->value . '</code>') ?>
+                            <? endforeach; ?>
+                            <? endif; ?>
+                        </li>
+                    </ul>
                 </div>
                 <!--Copy input <?= $i ?>-->
                 <span class="input">
