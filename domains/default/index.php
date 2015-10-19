@@ -52,6 +52,8 @@ while (false !== ($filename = readdir($dh))) {
             $baseurl = '/app_dev.php';
         } elseif (file_exists($symlinkPath . '/web/wp-config.php')) {
             $baseurl = ':81';
+        } elseif (file_exists($symlinkPath . '/build/production/')) {
+            $baseurl = ':82';
         } elseif (file_exists($symlinkPath . '/web/')) {
             $baseurl = '/';
         } else {
@@ -137,6 +139,10 @@ while (false !== ($filename = readdir($dh))) {
                         $data['info'][$key] = infoMenu($key, $val);
                     }
                 }
+                if (!empty($config['note'])) {
+                    krsort($config['note']);
+                    $data['note'] = $config['note'];
+                }
                 if (!empty($config['tags'])) {
                     $data['tags'] = explode(',', $config['tags']);
                     $TAGS = array_merge($TAGS, $data['tags']);
@@ -186,7 +192,7 @@ natcasesort($TAGS);
         <link rel="stylesheet" href="dist/main.css">
     </head>
     <body>
-        <nav class="navbar navbar-default">
+        <nav class="navbar navbar-default navbar-fixed-top">
             <div class="container">
                 <div class="navbar-header">
                     <a class="navbar-brand" href="/">
@@ -197,6 +203,10 @@ natcasesort($TAGS);
                         <span class="sr-only">Toggle navigation</span>
                         <span class="fa fa-fw fa-bars"></span>
                     </button>
+                    <button type="button" class="navbar-toggle" href="javascript://undefined">
+                        <em class="fa fa-fw fa-clock-o"></em>
+                        <strong class="current-time" data-copy="#current-time"></strong>
+                    </button>
                 </div>
                 <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
                     <? if (!empty($CLIENTS) || !empty($TAGS)): ?>
@@ -204,8 +214,9 @@ natcasesort($TAGS);
                             <? if (!empty($CLIENTS)): ?>
                                 <li class="dropdown">
                                     <a href="javascript://undefined" title="clients list" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
-                                        <span class="fa fa-fw fa-building-o"></span>
+                                        <em class="fa fa-fw fa-briefcase"></em>
                                         <span class="text">Clients</span>
+                                        <em class="hidden-sm hidden-md hidden-lg fa fa-level-down"></em>
                                     </a>
                                     <ul class="dropdown-menu">
                                         <? foreach ($CLIENTS as $clientId): ?>
@@ -224,26 +235,37 @@ natcasesort($TAGS);
                             <? if (!empty($TAGS)): ?>
                                 <li class="dropdown">
                                     <a href="javascript://undefined" title="tags list" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
-                                        <span class="fa fa-fw fa-tags"></span>
+                                        <em class="fa fa-fw fa-tags"></em>
                                         <span class="text">Tags</span>
+                                        <em class="hidden-sm hidden-md hidden-lg fa fa-level-down"></em>
                                     </a>
                                     <ul class="dropdown-menu">
                                         <? foreach ($TAGS as $tag): ?>
-                                            <li>
-                                                <a data-tag="<?= $tag ?>" href="javascript://undefined">
-                                                    <?= $tag ?>
-                                                    <? if (isset($tagIcons[$tag])): ?>
+                                            <? if (isset($tagIcons[$tag])): ?>
+                                                <li>
+                                                    <a data-tag="<?= $tag ?>" href="javascript://undefined">
                                                         <em class="fa fa-fw fa-<?= $tagIcons[$tag] ?>"></em>
-                                                    <? endif; ?>
-                                                </a>
-                                            </li>
+                                                        <?= $tag ?>
+                                                    </a>
+                                                </li>
+                                            <? endif; ?>
+                                        <? endforeach; ?>
+                                        <li class="divider hidden-xs"></li>
+                                        <? foreach ($TAGS as $tag): ?>
+                                            <? if (!isset($tagIcons[$tag])): ?>
+                                                <li>
+                                                    <a data-tag="<?= $tag ?>" href="javascript://undefined">
+                                                        <?= $tag ?>
+                                                    </a>
+                                                </li>
+                                            <? endif; ?>
                                         <? endforeach; ?>
                                     </ul>
                                 </li>
                             <? endif; ?>
                             <li>
                                 <a data-tag="latest" href="javascript://undefined">
-                                    <em class="fa fa-fw fa-clock-o"></em>
+                                    <em class="fa fa-fw fa-newspaper-o"></em>
                                     Latest
                                 </a>
                             </li>
@@ -275,6 +297,12 @@ natcasesort($TAGS);
                                 </a>
                             </li>
                         <? endif; ?>
+                        <li class="hidden-xs">
+                            <a href="javascript://undefined">
+                                <em class="fa fa-fw fa-clock-o"></em>
+                                <strong class="current-time" data-copy="#current-time"></strong>
+                            </a>
+                        </li>
                     </ul>
                 </div>
             </div>
@@ -324,27 +352,30 @@ natcasesort($TAGS);
                             <tbody>
                                 <? foreach ($DOMAINS as $i => $domain): ?>
                                     <tr id="tr-id-<?= $i ?>" class="tr-class-<?= $i ?>" data-id="<?= $i ?>">
-                                        <td class="<?= $domain->current ? 'lead' : '' ?>">
+                                        <td class="name<?= $domain->current ? ' lead' : '' ?>">
                                             <a href="<?= $domain->url ?>">
                                                 <?= $domain->name ?>
                                             </a>
                                         </td>
-                                        <td>
-                                            <span class="tags">
+                                        <td class="tags">
+                                            <div class="tags">
                                                 <? if (!empty($domain->code)): ?>
                                                     <a data-copy="#domain-<?= $i ?>-code" href="javascript://undefined">[<?= $domain->code ?>]</a>
                                                 <? endif; ?>
                                                 <? if (!empty($domain->client_id) && !empty($domain->job_id)): ?>
-                                                    <a data-tag="<?= $domain->client_id ?>" href="javascript://undefined"><strong><?= $clientNames[$domain->client_id] ?></strong> (#<?= $domain->job_id ?>)</a>
+                                                    <a data-tag="<?= $domain->client_id ?>" href="javascript://undefined"><strong><?= isset($clientNames[$domain->client_id]) ? $clientNames[$domain->client_id] : $domain->client_id ?></strong>
+                                                        (#<?= $domain->job_id ?>)</a>
                                                 <? elseif (isset($clientNames[$domain->client_id])): ?>
-                                                    <a data-tag="<?= $domain->client_id ?>" href="javascript://undefined"><strong><?= $clientNames[$domain->client_id] ?></strong> (#<?= $domain->client_id ?>)</a>
+                                                    <a data-tag="<?= $domain->client_id ?>"
+                                                       href="javascript://undefined"><strong><?= isset($clientNames[$domain->client_id]) ? $clientNames[$domain->client_id] : $domain->client_id ?></strong><? if (isset($clientNames[$domain->client_id])): ?> (#<?= $domain->client_id ?>)<? endif; ?>
+                                                    </a>
                                                 <? endif; ?>
                                                 <? if (!empty($domain->tags)): ?>
                                                     <? foreach ($domain->tags as $tag): ?>
                                                         <a data-tag="<?= $tag ?>" href="javascript://undefined"><?= $tag ?></a>
                                                     <? endforeach; ?>
                                                 <? endif; ?>
-                                            </span>
+                                            </div>
                                             <? if ($domain->current): ?>
                                                 <a data-tag="latest" href="javascript://undefined"></a>
                                             <? endif; ?>
@@ -358,17 +389,17 @@ natcasesort($TAGS);
                                         <td class="links">
                                             <div class="btn-group pull-right links">
                                                 <div class="btn-group" role="group">
-                                                    <?= generateLink('dropdown', ['title' => "Domains", 'class' => "btn btn-default btn-xs",], ['globe']) ?>
+                                                    <?= generateLink('dropdown', ['title' => "Domains", 'class' => "btn btn-primary btn-xs",], ['globe']) ?>
                                                     <ul class="dropdown-menu">
                                                         <?= generateListLink($domain->url, ['title' => "Local development page",], ['code'], 'Local') ?>
-                                                        <?= generateListLink($domain->devUrl, ['title' => "Development page",], ['globe'], 'Dev') ?>
-                                                        <?= generateListLink($domain->stageUrl, ['title' => "Stage page",], ['globe'], 'Stage') ?>
-                                                        <?= generateListLink($domain->liveUrl, ['title' => "Live page",], ['globe'], 'Live') ?>
+                                                        <?= generateListLink($domain->devUrl, ['title' => "Development page",], ['globe'], 'Development') ?>
+                                                        <?= generateListLink($domain->stageUrl, ['title' => "Pre-production (stage) page",], ['globe'], 'Pre-production (stage)') ?>
+                                                        <?= generateListLink($domain->liveUrl, ['title' => "Production (live) page",], ['industry'], 'Production (live)') ?>
                                                     </ul>
                                                 </div>
                                                 <? if (!empty($domain->tools) || !empty($domain->repoUrl)): ?>
                                                     <div class="btn-group" role="group">
-                                                        <?= generateLink('dropdown', ['title' => "External tools", 'class' => "btn btn-default btn-xs",], ['wrench']) ?>
+                                                        <?= generateLink('dropdown', ['title' => "External tools", 'class' => "btn btn-primary btn-xs",], ['wrench']) ?>
                                                         <ul class="dropdown-menu">
                                                             <?= generateListLink($domain->repoUrl, ['title' => "GIT repository",], ['code-fork'], 'GIT') ?>
                                                             <? foreach ($domain->tools as $tool): ?>
@@ -379,7 +410,7 @@ natcasesort($TAGS);
                                                 <? endif; ?>
                                                 <? if (!empty($domain->info)): ?>
                                                     <div class="btn-group" role="group">
-                                                        <?= generateLink('dropdown', ['title' => "Domain info", 'class' => "btn btn-default btn-xs",], ['info-circle']) ?>
+                                                        <?= generateLink('dropdown', ['title' => "Domain info", 'class' => "btn btn-info btn-xs",], ['info-circle']) ?>
                                                         <ul class="dropdown-menu">
                                                             <? foreach ($domain->info as $info): ?>
                                                                 <?= generateListLink("javascript://undefined", ['title' => 'Copy ' . $info->title, 'data-copy' => '#domain-' . $i . '-info-' . $info->code . ''], $info->icons, $info->name . ' <code>' . $info->value . '</code>') ?>
@@ -388,7 +419,7 @@ natcasesort($TAGS);
                                                     </div>
                                                 <? endif; ?>
                                                 <div class="btn-group" role="group">
-                                                    <?= generateLink('dropdown', ['title' => "Copy variables", 'class' => "btn btn-default btn-xs",], ['copy']) ?>
+                                                    <?= generateLink('dropdown', ['title' => "Copy variables", 'class' => "btn btn-info btn-xs",], ['copy']) ?>
                                                     <ul class="dropdown-menu">
                                                         <?= generateListLink("javascript://undefined", ['title' => 'Copy project code', 'data-copy' => '#domain-' . $i . '-code'], ['barcode'], 'Code') ?>
                                                         <?= generateListLink("javascript://undefined", ['title' => 'Copy real path', 'data-copy' => '#domain-' . $i . '-realpath'], ['folder'], 'Real path') ?>
@@ -398,6 +429,19 @@ natcasesort($TAGS);
                                                         <? endif; ?>
                                                     </ul>
                                                 </div>
+                                                <? if (!empty($domain->note)): ?>
+                                                    <div class="btn-group" role="group">
+                                                        <?= generateLink('dropdown', ['title' => "Notes", 'class' => "btn btn-info btn-xs",], ['sticky-note-o']) ?>
+                                                        <ul class="dropdown-menu">
+                                                            <? foreach ($domain->note as $date => $note): ?>
+                                                                <li class="dropdown-header">
+                                                                    <span class="text text-default"><?= $note ?></span>
+                                                                    <span class="badge"><?= $date ?></span>
+                                                                </li>
+                                                            <? endforeach; ?>
+                                                        </ul>
+                                                    </div>
+                                                <? endif; ?>
                                             </div>
                                         </td>
                                     </tr>
@@ -421,9 +465,9 @@ natcasesort($TAGS);
                             Domains
                         </li>
                         <?= generateListLink($domain->url, ['title' => "Local development page",], ['code'], 'Local') ?>
-                        <?= generateListLink($domain->devUrl, ['title' => "Development page",], ['globe'], 'Dev') ?>
-                        <?= generateListLink($domain->stageUrl, ['title' => "Stage page",], ['globe'], 'Stage') ?>
-                        <?= generateListLink($domain->liveUrl, ['title' => "Live page",], ['globe'], 'Live') ?>
+                        <?= generateListLink($domain->devUrl, ['title' => "Development page",], ['globe'], 'Development') ?>
+                        <?= generateListLink($domain->stageUrl, ['title' => "Pre-production (stage) page",], ['globe'], 'Pre-production (stage)') ?>
+                        <?= generateListLink($domain->liveUrl, ['title' => "Production (live) page",], ['industry'], 'Production (live)') ?>
                         <? if (!empty($domain->tools) || !empty($domain->repoUrl)): ?>
                             <li role="separator" class="divider"></li>
                             <li class="dropdown-header">
@@ -467,6 +511,10 @@ natcasesort($TAGS);
                     <? endif; ?>
                 </span>
             <? endforeach; ?>
+            <!--Copy time-->
+            <span class="input">
+                        <input id="current-time" value="0">
+                    </span>
             <!--Modal howto-->
             <div class="modal fade" id="howto">
                 <div class="modal-dialog">

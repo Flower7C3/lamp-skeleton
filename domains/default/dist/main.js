@@ -15,8 +15,32 @@ function searchOnPage(e) {
         $('.bootstrap-table .search input').val('').focus();
     }
 }
+
+function startTime() {
+    var today = new Date();
+    var h = today.getHours();
+    var m = today.getMinutes();
+    var s = today.getSeconds();
+    m = checkTime(m);
+    s = checkTime(s);
+    $('.current-time').text(h + ":" + m + ":" + s);
+    $('#current-time').val('@' + parseInt(today.getTime() / 1000));
+    var t = setTimeout(function () {
+        startTime()
+    }, 500);
+}
+
+function checkTime(i) {
+    if (i < 10) {
+        i = "0" + i
+    }
+    return i;
+}
+
+
 var tag = decodeURIComponent(window.location.hash.replace('#', '').trim());
 $(function () {
+    startTime();
     if (tag) {
         setTimeout(function () {
             tagFilter(tag);
@@ -29,7 +53,7 @@ $(function () {
             var id = $(this).data('id');
             $('.context-menu').removeClass('visible');
             $('#context-menu-id-' + id).addClass('visible').css({
-                top: e.pageY,
+                top: e.pageY - $('body').offset().top,
                 left: e.pageX,
             });
             return false;

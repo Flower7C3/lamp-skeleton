@@ -4,15 +4,14 @@ ini_set('display_errors', true);
 
 \Locale::setDefault('pl_PL');
 
-$suffix = "\.(dev|local)";
+$suffix = '\.'.str_replace('.','\.',$_SERVER['SERVER_NAME']);
 $dir = "/vagrant/domains/";
 $itemsPerPage = 10;
 $clientNames = [
 //    'key' => 'name',
 ];
 $TOOLS = [
-    'pma' => 'http://192.168.33.99/phpmyadmin/',
-    'example' => 'http://tool.example.com/',
+    'pma' => 'http://'.$_SERVER['SERVER_NAME'].'/phpmyadmin/',
 ];
 $tagIcons = [
     'evolution' => 'plus-square-o',
@@ -38,6 +37,7 @@ $tagIcons = [
     'mailing' => 'envelope',
     'events' => 'calendar',
 
+    'api' => 'crosshairs',
     'pl' => 'flag',
     'mobile' => 'mobile',
 ];
