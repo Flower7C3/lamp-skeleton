@@ -1,2 +1,9 @@
+Icon
 .DS_Store
-domains/default/.idea/
+.idea/
+.vagrant/
+/domains/default/.idea/
+/domains/
+!domains/default
+/projects/
+/apache/domains.list
