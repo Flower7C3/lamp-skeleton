@@ -188,6 +188,7 @@ natcasesort($TAGS);
         <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/<?= $bootstrapVersion ?>/css/bootstrap.min.css">
         <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/<?= $bootstrapVersion ?>/css/bootstrap-theme.min.css">
         <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.8.1/bootstrap-table.min.css">
+        <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.6.0/css/bootstrap-datepicker3.css">
         <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/font-awesome/<?= $fontawesomeVersion ?>/css/font-awesome.min.css">
         <link rel="stylesheet" href="dist/main.css">
     </head>
@@ -289,7 +290,7 @@ natcasesort($TAGS);
                                 <span class="hidden-sm hidden-md hidden-lg">Howto</span>
                             </a>
                         </li>
-                        <? if (!empty($DOMAINS)): ?>
+                        <? if (!empty($DOMAINS) && !$isXip): ?>
                             <li>
                                 <a data-toggle="modal" href="#hostsConfig" title="Hosts config info">
                                     <span class="fa fa-fw fa-cog"></span>
@@ -297,6 +298,11 @@ natcasesort($TAGS);
                                 </a>
                             </li>
                         <? endif; ?>
+                        <li class="hidden-xs">
+                            <a href="javascript://undefined" class="datepicker">
+                                <em class="fa fa-fw fa-calendar"></em>
+                            </a>
+                        </li>
                         <li class="hidden-xs">
                             <a href="javascript://undefined">
                                 <em class="fa fa-fw fa-clock-o"></em>
@@ -324,13 +330,13 @@ natcasesort($TAGS);
                                data-page-size="<?= $itemsPerPage ?>"
                                data-sort-name="date"
                                data-sort-order="desc"
-                            >
+                        >
                             <thead>
                                 <tr>
                                     <th
                                         data-field="name"
                                         data-sortable="true"
-                                        >
+                                    >
                                         <em class="fa fa-file-o"></em> Name
                                     </th>
                                     <th
@@ -533,35 +539,41 @@ natcasesort($TAGS);
                                 <li>Create <code>DESCRIPTION</code> file in <code>./projects/{PROJECT_ID}/</code> directory with config options (buttons links):
                                     <pre><?= file_get_contents('DEFAULT.ini') ?></pre>
                                 </li>
-                                <li>Reload this page, click <em class="fa fa-cog"> Hosts config</em> button, copy data and paste to Your local <code>/etc/hosts</code> file.</li>
+                                <? if (!$isXip): ?>
+                                    <li>Reload this page, click <em class="fa fa-cog"> Hosts config</em> button, copy data and paste to Your local <code>/etc/hosts</code> file.</li>
+                                <? endif; ?>
                             </ul>
                         </div>
                     </div>
                 </div>
             </div>
-            <!--Modal hostsConfig-->
-            <div class="modal fade" id="hostsConfig">
-                <div class="modal-dialog modal-lg">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                            <h4 class="modal-title">
-                                <em class="fa fa-fw fa-cog"></em>
-                                Hosts config
-                            </h4>
-                        </div>
-                        <div class="modal-body">
-                            Copy following code and paste into <code>/etc/hosts</code> file at Your local machine.
-                            <div class="form-control" style="width: 100%;height: 400px; resize: none"><?= $_SERVER['SERVER_ADDR'] . "\t" . implode("\t", $HOSTS) ?></div>
+            <? if (!$isXip): ?>
+                <!--Modal hostsConfig-->
+                <div class="modal fade" id="hostsConfig">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                                <h4 class="modal-title">
+                                    <em class="fa fa-fw fa-cog"></em>
+                                    Hosts config
+                                </h4>
+                            </div>
+                            <div class="modal-body">
+                                Copy following code and paste into <code>/etc/hosts</code> file at Your local machine.
+                                <div class="form-control" style="width: 100%;height: 400px; resize: none"><?= $_SERVER['SERVER_ADDR'] . "\t" . implode("\t", $HOSTS) ?></div>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            <? endif; ?>
         <? endif; ?>
         <script src="//code.jquery.com/jquery-<?= $jqueryVersion ?>.min.js"></script>
         <script src="//maxcdn.bootstrapcdn.com/bootstrap/<?= $bootstrapVersion ?>/js/bootstrap.min.js"></script>
         <script src="//cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.8.1/bootstrap-table.min.js"></script>
         <script src="//cdnjs.cloudflare.com/ajax/libs/bootstrap-growl/1.0.0/jquery.bootstrap-growl.min.js"></script>
+        <script src="//cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.6.0/js/bootstrap-datepicker.min.js"></script>
+        <script src="//cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.6.0/locales/bootstrap-datepicker.pl.min.js"></script>
         <script src="dist/main.js"></script>
     </body>
 </html>

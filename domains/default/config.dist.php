@@ -5,6 +5,7 @@ ini_set('display_errors', true);
 \Locale::setDefault('pl_PL');
 
 $suffix = '\.'.str_replace('.','\.',$_SERVER['SERVER_NAME']);
+$isXip = preg_match("'.xip.io$'", $_SERVER['SERVER_NAME']);
 $dir = "/vagrant/domains/";
 $itemsPerPage = 10;
 $clientNames = [

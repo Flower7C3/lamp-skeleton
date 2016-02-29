@@ -48,6 +48,13 @@ $(function () {
     } else {
         removeLoader();
     }
+    $('.datepicker').datepicker({
+        todayBtn: true,
+        language: "pl",
+        orientation: "bottom right",
+        calendarWeeks: true,
+        todayHighlight: true
+    });
     $(document)
         .on('contextmenu', '.bootstrap-table tr', function (e) {
             var id = $(this).data('id');
@@ -113,10 +120,10 @@ $(function () {
                 }
             }
         }).on('sort.bs.table', function () {
-            createLoader();
-        }).on('pre-body.bs.table', function () {
-            createLoader();
-        }).on('post-body.bs.table', function () {
-            removeLoader();
-        });
+        createLoader();
+    }).on('pre-body.bs.table', function () {
+        createLoader();
+    }).on('post-body.bs.table', function () {
+        removeLoader();
+    });
 });
