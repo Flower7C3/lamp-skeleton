@@ -61,7 +61,7 @@ while (false !== ($filename = readdir($dh))) {
         }
 
         # last modification time from repo
-        $mtime = file_exists($symlinkPath . '/.git/') ? filemtime($symlinkPath . '/.git/') : filemtime($symlinkPath);
+        $mtime = file_exists($symlinkPath . '/.git/') ? filemtime($symlinkPath . '/.git/') : (file_exists($symlinkPath) ? filemtime($symlinkPath) : 0);
 
         # meta data
         $data['name'] = $externalDomain;
@@ -191,13 +191,14 @@ natcasesort($TAGS);
         <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.6.0/css/bootstrap-datepicker3.css">
         <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/font-awesome/<?= $fontawesomeVersion ?>/css/font-awesome.min.css">
         <link rel="stylesheet" href="dist/main.css">
+        <link rel='shortcut icon' href='dist/icon.png' />
     </head>
     <body>
         <nav class="navbar navbar-default navbar-fixed-top">
             <div class="container">
                 <div class="navbar-header">
                     <a class="navbar-brand" href="/">
-                        <span class="glyphicon glyphicon-fire"></span>
+                        <span class="fa fa-cloud"></span>
                         VServer
                     </a>
                     <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1" aria-expanded="false">
@@ -365,9 +366,6 @@ natcasesort($TAGS);
                                         </td>
                                         <td class="tags">
                                             <div class="tags">
-                                                <? if (!empty($domain->code)): ?>
-                                                    <a data-copy="#domain-<?= $i ?>-code" href="javascript://undefined">[<?= $domain->code ?>]</a>
-                                                <? endif; ?>
                                                 <? if (!empty($domain->client_id) && !empty($domain->job_id)): ?>
                                                     <a data-tag="<?= $domain->client_id ?>" href="javascript://undefined"><strong><?= isset($clientNames[$domain->client_id]) ? $clientNames[$domain->client_id] : $domain->client_id ?></strong>
                                                         (#<?= $domain->job_id ?>)</a>

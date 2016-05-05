@@ -1,7 +1,10 @@
-Icon
+Icon
+
 .DS_Store
 .idea/
 .vagrant/
+/database
+!database/.gitkeep
 /domains/default/.idea/
 /domains/
 !domains/default

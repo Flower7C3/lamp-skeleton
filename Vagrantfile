@@ -15,7 +15,7 @@ Vagrant.configure("2") do |config|
 		v.customize [
 			"modifyvm", :id,
 			"--name", "LAMPSkeleton",
-			"--memory", 1024,
+			"--memory", 1536,
 			"--natdnshostresolver1", "on",
 			"--cpus", 1,
 		]
@@ -39,11 +39,27 @@ Vagrant.configure("2") do |config|
 		ansible.limit = 'all'
 		ansible.extra_vars = {
 			private_interface: "192.168.33.99",
-			hostname: "default"
+			hostname: "LAMPSkeleton"
 		}
 	end
 	
 	config.vm.synced_folder "./",
 	    "/vagrant",
         type: "nfs"
+
+	config.vm.synced_folder "./domains",
+	    "/var/www/domains",
+	    owner: "vagrant", group: "www-data",
+	    mount_options: ['dmode=775', 'fmode=775']
+
+	config.vm.synced_folder "./projects",
+	    "/var/www/projects",
+	    owner: "vagrant", group: "www-data",
+	    mount_options: ['dmode=775', 'fmode=775']
+
+	config.vm.synced_folder "./database",
+	    "/var/lib/mysql",
+	    owner: "mysql", group: "mysql",
+	    mount_options: ['dmode=775', 'fmode=775']
+
 end

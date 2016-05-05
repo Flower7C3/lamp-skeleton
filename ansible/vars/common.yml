@@ -14,3 +14,5 @@
         - { src: "/usr/bin/jpegoptim", dest: "/usr/local/bin/jpegoptim" }
         - { src: "/usr/bin/nodejs", dest: "/usr/bin/node" }
         - { src: "/usr/local/bin/sass", dest: "/usr/bin/sass" }
+    apacheConfig:
+        - { src: "/vagrant/apache/default.conf", dest: "/etc/apache2/sites-enabled/default.conf" }
