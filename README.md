@@ -12,3 +12,6 @@
         192.168.33.99 example.com.local
 7. Create **config.php** file in **/vagrant/domains/default/** directory.
 8. Open [web browser](http://192.168.33.99).
+
+
+**Check docker version https://github.com/Flower7C3/docker-lamp**
